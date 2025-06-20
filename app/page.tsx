@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 
 interface Consulta {
   id: number;
@@ -17,6 +17,8 @@ interface ConsultaNormalizada {
   terapeuta: string;
   pontuacao: number;
   observacoes: string;
+  urgencia_nivel?: 'baixa' | 'media' | 'alta' | 'critica';
+  tempo_desde_criacao?: number;
 }
 
 interface Filters {
@@ -29,6 +31,14 @@ interface Filters {
   busca: string;
 }
 
+interface InsightIA {
+  tipo: 'alerta' | 'info' | 'sucesso';
+  titulo: string;
+  descricao: string;
+  icone: string;
+  acao?: string;
+}
+
 export default function MedwayDashboard() {
   const [data, setData] = useState<ConsultaNormalizada[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,6 +48,13 @@ export default function MedwayDashboard() {
   const [activeView, setActiveView] = useState('hoje');
   const [showFilters, setShowFilters] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState('connecting');
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [nextUpdateIn, setNextUpdateIn] = useState(30);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedPatient, setSelectedPatient] = useState<ConsultaNormalizada | null>(null);
+  const [showInsights, setShowInsights] = useState(true);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  
   const [filters, setFilters] = useState<Filters>({
     terapeuta: '',
     periodo: 'hoje',
@@ -49,34 +66,47 @@ export default function MedwayDashboard() {
   });
 
   // Configuração Supabase
-  const SUPABASE_URL = 'https://dtvaadwcfzpgbthkjlqa.supabase.co';
-  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR0dmFhZHdjZnpwZ2J0aGtqbHFhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA3MzIxMDAsImV4cCI6MjA0NjMwODEwMH0.JIENlyeyk0ibOq0Nb4ydFSFbsPprBFICfNHlvF8guwU';
+  const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://dtvaadwcfzpgbthkjlqa.supabase.co';
+  const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR0dmFhZHdjZnpwZ2J0aGtqbHFhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA3MzIxMDAsImV4cCI6MjA0NjMwODEwMH0.JIENlyeyk0ibOq0Nb4ydFSFbsPprBFICfNHlvF8guwU';
 
-  // Função para mapear dados da estrutura real para a esperada
+  // Função para calcular tempo desde criação
+  const calcularTempoDecorrido = (dataString: string) => {
+    const agora = new Date();
+    const dataCriacao = new Date(dataString);
+    const diferencaMs = agora.getTime() - dataCriacao.getTime();
+    return Math.floor(diferencaMs / (1000 * 60)); // em minutos
+  };
+
+  // Função para mapear dados com melhorias
   const mapearDados = (dadosOriginais: Consulta[]): ConsultaNormalizada[] => {
     return dadosOriginais.map((item, index) => {
-      // Mapear situacao_mental para pontuacao
       let pontuacao = 0;
+      let urgencia_nivel: 'baixa' | 'media' | 'alta' | 'critica' = 'baixa';
+
       switch(item.situacao_mental) {
         case 'LEVE':
-          pontuacao = Math.floor(Math.random() * 30); // 0-29
+          pontuacao = Math.floor(Math.random() * 30);
+          urgencia_nivel = 'baixa';
           break;
         case 'CONSIDERAVEL':
-          pontuacao = Math.floor(Math.random() * 20) + 30; // 30-49
+          pontuacao = Math.floor(Math.random() * 20) + 30;
+          urgencia_nivel = 'media';
           break;
         case 'GRAVE':
-          pontuacao = Math.floor(Math.random() * 20) + 50; // 50-69
+          pontuacao = Math.floor(Math.random() * 20) + 50;
+          urgencia_nivel = pontuacao >= 65 ? 'critica' : 'alta';
           break;
         case 'ESTÁVEL':
-          pontuacao = Math.floor(Math.random() * 25); // 0-24
+          pontuacao = Math.floor(Math.random() * 25);
+          urgencia_nivel = 'baixa';
           break;
         default:
           pontuacao = Math.floor(Math.random() * 100);
+          urgencia_nivel = pontuacao >= 70 ? 'critica' : pontuacao >= 50 ? 'alta' : pontuacao >= 30 ? 'media' : 'baixa';
       }
 
-      // Criar data baseada no índice (dados mais recentes primeiro)
       const agora = new Date();
-      const horasAtras = index * 2; // A cada 2 horas para trás
+      const horasAtras = index * 2;
       const dataFake = new Date(agora.getTime() - (horasAtras * 60 * 60 * 1000));
 
       return {
@@ -85,10 +115,102 @@ export default function MedwayDashboard() {
         nome_aluno: `Aluno ${item.aluno_id}` || `Aluno ${item.id}`,
         terapeuta: `Terapeuta ${item.terapeuta_id}` || `Terapeuta ${item.id}`,
         pontuacao: pontuacao,
-        observacoes: item.observacoes || 'Sem observações registradas.'
+        observacoes: item.observacoes || 'Sem observações registradas.',
+        urgencia_nivel,
+        tempo_desde_criacao: calcularTempoDecorrido(dataFake.toISOString())
       };
     });
   };
+
+  // Insights IA automáticos
+  const gerarInsightsIA = useMemo((): InsightIA[] => {
+    if (!data || data.length === 0) return [];
+
+    const insights: InsightIA[] = [];
+    const agora = new Date();
+    const dadosHoje = data.filter(item => {
+      const itemDate = new Date(item.created_at);
+      return itemDate.toDateString() === agora.toDateString();
+    });
+
+    // Insight sobre casos críticos
+    const casosCriticos = dadosHoje.filter(item => item.urgencia_nivel === 'critica');
+    if (casosCriticos.length > 0) {
+      insights.push({
+        tipo: 'alerta',
+        titulo: `${casosCriticos.length} casos críticos requerem atenção imediata`,
+        descricao: `Pontuação média: ${(casosCriticos.reduce((acc, item) => acc + item.pontuacao, 0) / casosCriticos.length).toFixed(1)}`,
+        icone: '🚨',
+        acao: 'Revisar casos'
+      });
+    }
+
+    // Insight sobre produtividade
+    const terapeutasAtivos = [...new Set(dadosHoje.map(item => item.terapeuta))];
+    if (terapeutasAtivos.length > 0) {
+      const mediaPorTerapeuta = dadosHoje.length / terapeutasAtivos.length;
+      insights.push({
+        tipo: 'info',
+        titulo: `${terapeutasAtivos.length} terapeutas ativos hoje`,
+        descricao: `Média de ${mediaPorTerapeuta.toFixed(1)} consultas por terapeuta`,
+        icone: '👥',
+      });
+    }
+
+    // Insight sobre horário de pico
+    const horariosPico = dadosHoje.reduce((acc, item) => {
+      const hora = new Date(item.created_at).getHours();
+      acc[hora] = (acc[hora] || 0) + 1;
+      return acc;
+    }, {} as Record<number, number>);
+
+    const horaMaisPico = Object.entries(horariosPico).sort(([,a], [,b]) => b - a)[0];
+    if (horaMaisPico) {
+      insights.push({
+        tipo: 'info',
+        titulo: `Horário de pico: ${horaMaisPico[0]}h`,
+        descricao: `${horaMaisPico[1]} consultas registradas`,
+        icone: '📊'
+      });
+    }
+
+    // Insight positivo
+    const casosNormais = dadosHoje.filter(item => item.pontuacao < 30);
+    if (casosNormais.length > dadosHoje.length * 0.7) {
+      insights.push({
+        tipo: 'sucesso',
+        titulo: 'Dia com baixa criticidade!',
+        descricao: `${Math.round((casosNormais.length / dadosHoje.length) * 100)}% dos casos em níveis normais`,
+        icone: '🎉'
+      });
+    }
+
+    return insights.slice(0, 4); // Máximo 4 insights
+  }, [data]);
+
+  // Play alert sound para casos críticos
+  const playAlertSound = useCallback(() => {
+    if (!soundEnabled) return;
+    
+    try {
+      // Create a simple beep using Web Audio API
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+      gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+      
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.5);
+    } catch (error) {
+      console.log('Audio not supported');
+    }
+  }, [soundEnabled]);
 
   const fetchData = useCallback(async () => {
     try {
@@ -107,14 +229,21 @@ export default function MedwayDashboard() {
       const response = await fetch(url, { headers });
       
       if (!response.ok) {
-        const errorText = await response.text();
         throw new Error(`Erro ${response.status}: ${response.statusText}`);
       }
       
       const result: Consulta[] = await response.json();
-      
-      // Mapear dados para a estrutura esperada
       const dadosMapeados = mapearDados(result);
+      
+      // Check for new critical cases and play sound
+      const novosCasosCriticos = dadosMapeados.filter(item => 
+        item.urgencia_nivel === 'critica' && 
+        item.tempo_desde_criacao! < 5
+      );
+      
+      if (novosCasosCriticos.length > 0 && data.length > 0) {
+        playAlertSound();
+      }
       
       setData(dadosMapeados);
       setLastUpdate(new Date());
@@ -125,36 +254,66 @@ export default function MedwayDashboard() {
       setError(error.message);
       setConnectionStatus('error');
       
-      // Dados de exemplo caso falhe
+      // Dados de exemplo mais ricos
       const dadosExemplo: ConsultaNormalizada[] = [
         {
           id: 1,
           created_at: new Date().toISOString(),
           nome_aluno: 'Maria Silva',
           terapeuta: 'Dr. João Santos',
-          pontuacao: 25,
-          observacoes: 'Sessão muito produtiva. Aluna demonstrou melhora significativa na expressão emocional.'
+          pontuacao: 72,
+          observacoes: 'Paciente apresenta sinais de ansiedade severa. Recomenda-se acompanhamento médico imediato.',
+          urgencia_nivel: 'critica',
+          tempo_desde_criacao: 5
         },
         {
           id: 2,
-          created_at: new Date(Date.now() - 2700000).toISOString(),
+          created_at: new Date(Date.now() - 1800000).toISOString(),
           nome_aluno: 'Pedro Costa',
           terapeuta: 'Dra. Ana Lima',
           pontuacao: 42,
-          observacoes: 'Necessita acompanhamento mais próximo. Sinais de ansiedade elevada.'
+          observacoes: 'Sessão produtiva. Paciente demonstra melhora gradual nos sintomas de depressão.',
+          urgencia_nivel: 'media',
+          tempo_desde_criacao: 30
+        },
+        {
+          id: 3,
+          created_at: new Date(Date.now() - 3600000).toISOString(),
+          nome_aluno: 'Ana Oliveira',
+          terapeuta: 'Dr. Carlos Mendes',
+          pontuacao: 18,
+          observacoes: 'Excelente progresso. Paciente apresenta estabilidade emocional.',
+          urgencia_nivel: 'baixa',
+          tempo_desde_criacao: 60
         }
       ];
       setData(dadosExemplo);
     } finally {
       setLoading(false);
     }
-  }, [SUPABASE_URL, SUPABASE_KEY]);
+  }, [SUPABASE_URL, SUPABASE_KEY, data, playAlertSound]);
+
+  // Countdown timer para próxima atualização
+  useEffect(() => {
+    if (!realTimeEnabled) return;
+    
+    const countdown = setInterval(() => {
+      setNextUpdateIn(prev => {
+        if (prev <= 1) {
+          return 30;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(countdown);
+  }, [realTimeEnabled]);
 
   useEffect(() => {
     fetchData();
     
     if (realTimeEnabled) {
-      const interval = setInterval(fetchData, 30000); // A cada 30s
+      const interval = setInterval(fetchData, 30000);
       return () => clearInterval(interval);
     }
   }, [realTimeEnabled, fetchData]);
@@ -186,26 +345,41 @@ export default function MedwayDashboard() {
     }
   };
 
-  const dadosFiltrados = data.filter((item: ConsultaNormalizada) => {
-    if (filters.periodo !== 'todos') {
-      const dadosPeriodo = filtrarPorPeriodo([item], filters.periodo);
-      if (dadosPeriodo.length === 0) return false;
+  // Filtros avançados com busca
+  const dadosFiltrados = useMemo(() => {
+    let resultado = data.filter((item: ConsultaNormalizada) => {
+      if (filters.periodo !== 'todos') {
+        const dadosPeriodo = filtrarPorPeriodo([item], filters.periodo);
+        if (dadosPeriodo.length === 0) return false;
+      }
+      
+      if (filters.terapeuta && item.terapeuta !== filters.terapeuta) return false;
+      if (filters.aluno && !item.nome_aluno?.toLowerCase().includes(filters.aluno.toLowerCase())) return false;
+      if (filters.pontuacaoMin && Number(item.pontuacao) < parseFloat(filters.pontuacaoMin)) return false;
+      if (filters.pontuacaoMax && Number(item.pontuacao) > parseFloat(filters.pontuacaoMax)) return false;
+      
+      if (filters.status) {
+        const pontuacao = Number(item.pontuacao) || 0;
+        const status = pontuacao >= 50 ? 'urgente' : pontuacao >= 30 ? 'atencao' : 'normal';
+        if (status !== filters.status) return false;
+      }
+      
+      return true;
+    });
+
+    // Aplicar busca instantânea
+    if (searchTerm.trim()) {
+      const termo = searchTerm.toLowerCase().trim();
+      resultado = resultado.filter(item => 
+        item.nome_aluno?.toLowerCase().includes(termo) ||
+        item.terapeuta?.toLowerCase().includes(termo) ||
+        item.observacoes?.toLowerCase().includes(termo) ||
+        item.pontuacao.toString().includes(termo)
+      );
     }
-    
-    if (filters.terapeuta && item.terapeuta !== filters.terapeuta) return false;
-    if (filters.aluno && !item.nome_aluno?.toLowerCase().includes(filters.aluno.toLowerCase())) return false;
-    if (filters.pontuacaoMin && Number(item.pontuacao) < parseFloat(filters.pontuacaoMin)) return false;
-    if (filters.pontuacaoMax && Number(item.pontuacao) > parseFloat(filters.pontuacaoMax)) return false;
-    if (filters.busca && !JSON.stringify(item).toLowerCase().includes(filters.busca.toLowerCase())) return false;
-    
-    if (filters.status) {
-      const pontuacao = Number(item.pontuacao) || 0;
-      const status = pontuacao >= 50 ? 'urgente' : pontuacao >= 30 ? 'atencao' : 'normal';
-      if (status !== filters.status) return false;
-    }
-    
-    return true;
-  });
+
+    return resultado;
+  }, [data, filters, searchTerm]);
 
   const dadosHoje = filtrarPorPeriodo(data, activeView);
   const dadosOntem = filtrarPorPeriodo(data, 'ontem');
@@ -225,7 +399,8 @@ export default function MedwayDashboard() {
       : 0,
     casosUrgentesHoje: dadosHoje.filter(item => Number(item.pontuacao) >= 50).length,
     casosAtencaoHoje: dadosHoje.filter(item => Number(item.pontuacao) >= 30 && Number(item.pontuacao) < 50).length,
-    casosNormaisHoje: dadosHoje.filter(item => Number(item.pontuacao) < 30).length
+    casosNormaisHoje: dadosHoje.filter(item => Number(item.pontuacao) < 30).length,
+    casosCriticosHoje: dadosHoje.filter(item => item.urgencia_nivel === 'critica').length
   };
 
   const crescimentoHoje = metricas.totalOntem > 0 
@@ -242,14 +417,32 @@ export default function MedwayDashboard() {
     return {
       hora: `${hora.toString().padStart(2, '0')}:00`,
       consultas: consultasHora.length,
-      urgentes: consultasHora.filter(item => Number(item.pontuacao) >= 50).length
+      urgentes: consultasHora.filter(item => Number(item.pontuacao) >= 50).length,
+      criticos: consultasHora.filter(item => item.urgencia_nivel === 'critica').length
     };
   });
+
+  // Funções de ação rápida
+  const acoesRapidas = {
+    ligar: (paciente: ConsultaNormalizada) => {
+      alert(`Iniciando ligação para ${paciente.nome_aluno}...`);
+    },
+    email: (paciente: ConsultaNormalizada) => {
+      const mailto = `mailto:contato@medway.com?subject=Follow-up: ${paciente.nome_aluno}&body=Referente ao caso de ${paciente.nome_aluno} (Pontuação: ${paciente.pontuacao})`;
+      window.open(mailto);
+    },
+    agendar: (paciente: ConsultaNormalizada) => {
+      alert(`Abrindo agenda para ${paciente.nome_aluno}...`);
+    },
+    observacoes: (paciente: ConsultaNormalizada) => {
+      setSelectedPatient(paciente);
+    }
+  };
 
   const exportData = () => {
     try {
       const csv = [
-        ['Data/Hora', 'Aluno', 'Terapeuta', 'Pontuação', 'Status', 'Observações'],
+        ['Data/Hora', 'Aluno', 'Terapeuta', 'Pontuação', 'Status', 'Urgência', 'Tempo Decorrido', 'Observações'],
         ...dadosFiltrados.map(item => {
           const pontuacao = Number(item.pontuacao) || 0;
           const status = pontuacao >= 50 ? 'Urgente' : pontuacao >= 30 ? 'Atenção' : 'Normal';
@@ -259,6 +452,8 @@ export default function MedwayDashboard() {
             item.terapeuta || '',
             item.pontuacao || '',
             status,
+            item.urgencia_nivel || '',
+            `${item.tempo_desde_criacao || 0} min`,
             (item.observacoes || '').replace(/,/g, ';')
           ];
         })
@@ -288,6 +483,14 @@ export default function MedwayDashboard() {
       aluno: '',
       busca: ''
     });
+    setSearchTerm('');
+  };
+
+  const formatTempo = (minutos: number): string => {
+    if (minutos < 60) return `${minutos}min`;
+    const horas = Math.floor(minutos / 60);
+    const mins = minutos % 60;
+    return `${horas}h${mins > 0 ? ` ${mins}min` : ''}`;
   };
 
   if (loading) {
@@ -306,17 +509,7 @@ export default function MedwayDashboard() {
         position: 'relative',
         overflow: 'hidden'
       }}>
-        {/* Animated background particles */}
-        <div style={{
-          position: 'absolute',
-          inset: 0,
-          background: `
-            radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.1) 0%, transparent 50%),
-            radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.1) 0%, transparent 50%)
-          `,
-          animation: 'float 6s ease-in-out infinite'
-        }}></div>
-        
+        {/* Skeleton Loading Premium */}
         <div style={{
           background: 'rgba(255, 255, 255, 0.05)',
           backdropFilter: 'blur(20px)',
@@ -333,33 +526,18 @@ export default function MedwayDashboard() {
           position: 'relative',
           animation: 'slideUp 0.8s ease-out'
         }}>
-          {/* Logo gradient */}
           <div style={{
             width: '100px',
             height: '100px',
-            background: `
-              linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%)
-            `,
+            background: `linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%)`,
             borderRadius: '24px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             margin: '0 auto 32px',
             fontSize: '48px',
-            position: 'relative',
             animation: 'pulse 2s ease-in-out infinite'
           }}>
-            <div style={{
-              position: 'absolute',
-              inset: '-4px',
-              background: `
-                linear-gradient(135deg, #6366f1, #8b5cf6, #ec4899)
-              `,
-              borderRadius: '28px',
-              opacity: 0.3,
-              filter: 'blur(8px)',
-              animation: 'glow 2s ease-in-out infinite alternate'
-            }}></div>
             🧠
           </div>
           
@@ -367,47 +545,24 @@ export default function MedwayDashboard() {
             color: '#f8fafc', 
             marginBottom: '16px', 
             fontSize: '32px',
-            fontWeight: '700',
-            letterSpacing: '-0.025em',
-            background: `
-              linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)
-            `,
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent'
+            fontWeight: '700'
           }}>
-            MEDWAY Analytics
+            MEDWAY Analytics v3.0
           </h2>
           
-          <p style={{ 
-            color: 'rgba(248, 250, 252, 0.7)', 
-            marginBottom: '32px',
-            fontSize: '18px',
-            fontWeight: '400',
-            lineHeight: 1.6
-          }}>
-            Iniciando sistema de monitoramento em tempo real...
-          </p>
-          
-          {/* Elegant loading dots */}
-          <div style={{ 
+          <div style={{
             display: 'flex',
-            justifyContent: 'center',
-            gap: '8px',
-            marginBottom: '24px'
+            flexDirection: 'column',
+            gap: '12px',
+            marginBottom: '32px'
           }}>
-            {[0, 1, 2].map((i) => (
-              <div
-                key={i}
-                style={{
-                  width: '12px',
-                  height: '12px',
-                  background: `
-                    linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)
-                  `,
-                  borderRadius: '50%',
-                  animation: `bounce 1.4s ease-in-out ${i * 0.16}s infinite`
-                }}
-              ></div>
+            {[1, 2, 3].map(i => (
+              <div key={i} style={{
+                height: '8px',
+                background: 'rgba(99, 102, 241, 0.2)',
+                borderRadius: '4px',
+                animation: `shimmer 2s ease-in-out ${i * 0.2}s infinite`
+              }}></div>
             ))}
           </div>
           
@@ -417,11 +572,9 @@ export default function MedwayDashboard() {
             borderRadius: '16px',
             border: '1px solid rgba(99, 102, 241, 0.2)',
             color: 'rgba(248, 250, 252, 0.8)',
-            fontSize: '14px',
-            fontWeight: '500'
+            fontSize: '14px'
           }}>
-            <div style={{ marginBottom: '4px' }}>🔗 Conectando ao Supabase...</div>
-            <div style={{ color: 'rgba(99, 102, 241, 0.8)' }}>Estabelecendo conexão segura</div>
+            🔗 Conectando ao Supabase...
           </div>
         </div>
         
@@ -430,22 +583,14 @@ export default function MedwayDashboard() {
             from { opacity: 0; transform: translateY(30px); }
             to { opacity: 1; transform: translateY(0); }
           }
-          @keyframes bounce {
-            0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
-            40% { transform: scale(1.2); opacity: 1; }
-          }
-          @keyframes float {
-            0%, 100% { transform: translate(0, 0) rotate(0deg); }
-            33% { transform: translate(30px, -30px) rotate(120deg); }
-            66% { transform: translate(-20px, 20px) rotate(240deg); }
-          }
           @keyframes pulse {
             0%, 100% { transform: scale(1); }
             50% { transform: scale(1.05); }
           }
-          @keyframes glow {
-            from { opacity: 0.2; }
-            to { opacity: 0.4; }
+          @keyframes shimmer {
+            0% { opacity: 0.3; transform: translateX(-100%); }
+            50% { opacity: 0.7; transform: translateX(0%); }
+            100% { opacity: 0.3; transform: translateX(100%); }
           }
         `}</style>
       </div>
@@ -487,22 +632,11 @@ export default function MedwayDashboard() {
           overflow: hidden;
         }
         
-        .glass-card:before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          height: 1px;
-          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-        }
-        
         .glass-card:hover {
           transform: translateY(-4px);
           box-shadow: 
             0 32px 64px -12px rgba(0, 0, 0, 0.35),
-            inset 0 1px 0 rgba(255, 255, 255, 0.15),
-            0 0 0 1px rgba(255, 255, 255, 0.08);
+            inset 0 1px 0 rgba(255, 255, 255, 0.15);
         }
         
         .metric-card {
@@ -521,22 +655,11 @@ export default function MedwayDashboard() {
           overflow: hidden;
         }
         
-        .metric-card:before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          height: 1px;
-          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
-        }
-        
         .metric-card:hover {
           transform: translateY(-2px) scale(1.02);
           box-shadow: 
             0 16px 48px rgba(0, 0, 0, 0.25),
             inset 0 1px 0 rgba(255, 255, 255, 0.12);
-          border-color: rgba(255, 255, 255, 0.15);
         }
         
         .btn {
@@ -555,399 +678,191 @@ export default function MedwayDashboard() {
           letter-spacing: 0.025em;
         }
         
-        .btn:before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: -100%;
-          width: 100%;
-          height: 100%;
-          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-          transition: left 0.5s;
-        }
-        
-        .btn:hover:before {
-          left: 100%;
-        }
-        
         .btn-primary {
           background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
           color: white;
           border: 1px solid rgba(99, 102, 241, 0.3);
-          box-shadow: 
-            0 4px 16px rgba(99, 102, 241, 0.3),
-            inset 0 1px 0 rgba(255, 255, 255, 0.2);
+          box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3);
         }
         
         .btn-primary:hover {
           background: linear-gradient(135deg, #5b5ff9 0%, #9333ea 100%);
           transform: translateY(-2px);
-          box-shadow: 
-            0 8px 24px rgba(99, 102, 241, 0.4),
-            inset 0 1px 0 rgba(255, 255, 255, 0.25);
+          box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4);
         }
         
         .btn-success {
           background: linear-gradient(135deg, #10b981 0%, #059669 100%);
           color: white;
           border: 1px solid rgba(16, 185, 129, 0.3);
-          box-shadow: 
-            0 4px 16px rgba(16, 185, 129, 0.25),
-            inset 0 1px 0 rgba(255, 255, 255, 0.2);
-        }
-        
-        .btn-success:hover {
-          background: linear-gradient(135deg, #059669 0%, #047857 100%);
-          transform: translateY(-2px);
-          box-shadow: 
-            0 8px 24px rgba(16, 185, 129, 0.35),
-            inset 0 1px 0 rgba(255, 255, 255, 0.25);
         }
         
         .btn-warning {
           background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
           color: white;
           border: 1px solid rgba(245, 158, 11, 0.3);
-          box-shadow: 
-            0 4px 16px rgba(245, 158, 11, 0.25),
-            inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        }
+        
+        .btn-danger {
+          background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+          color: white;
+          border: 1px solid rgba(239, 68, 68, 0.3);
         }
         
         .btn-secondary {
           background: rgba(71, 85, 105, 0.6);
           color: rgba(248, 250, 252, 0.9);
           border: 1px solid rgba(71, 85, 105, 0.3);
-          box-shadow: 
-            0 4px 16px rgba(71, 85, 105, 0.2),
-            inset 0 1px 0 rgba(255, 255, 255, 0.1);
         }
         
-        .btn-secondary:hover {
-          background: rgba(71, 85, 105, 0.8);
-          transform: translateY(-2px);
-          color: white;
-        }
-        
-        .status-normal { 
-          color: #34d399; 
-          font-weight: 600;
-          text-shadow: 0 0 8px rgba(52, 211, 153, 0.3);
-        }
-        .status-atencao { 
-          color: #fbbf24; 
-          font-weight: 600;
-          text-shadow: 0 0 8px rgba(251, 191, 36, 0.3);
-        }
-        .status-urgente { 
-          color: #f87171; 
-          font-weight: 600;
-          text-shadow: 0 0 8px rgba(248, 113, 113, 0.3);
-        }
-        
-        .elegant-progress {
-          width: 100%;
-          height: 12px;
-          background: rgba(71, 85, 105, 0.3);
+        .btn-sm {
+          padding: 8px 12px;
+          font-size: 12px;
           border-radius: 8px;
-          overflow: hidden;
-          margin: 16px 0;
-          position: relative;
-          box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+          margin: 2px;
         }
         
-        .elegant-progress:before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          height: 1px;
-          background: rgba(255, 255, 255, 0.1);
-        }
-        
-        .progress-fill {
-          height: 100%;
-          transition: width 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-          position: relative;
-          border-radius: 8px;
-        }
-        
-        .progress-fill:after {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          height: 50%;
-          background: rgba(255, 255, 255, 0.2);
-          border-radius: 8px 8px 0 0;
-        }
-        
-        .progress-normal { 
-          background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
-          box-shadow: 0 0 16px rgba(52, 211, 153, 0.3);
-        }
-        .progress-atencao { 
-          background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-          box-shadow: 0 0 16px rgba(251, 191, 36, 0.3);
-        }
-        .progress-urgente { 
-          background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
-          box-shadow: 0 0 16px rgba(248, 113, 113, 0.3);
-        }
-        
-        .elegant-table {
-          width: 100%;
-          border-collapse: collapse;
-          background: rgba(255, 255, 255, 0.04);
-          border-radius: 16px;
-          overflow: hidden;
-          backdrop-filter: blur(8px);
-          border: 1px solid rgba(255, 255, 255, 0.06);
-        }
-        
-        .elegant-table th {
-          background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%);
-          color: rgba(248, 250, 252, 0.95);
-          padding: 20px 16px;
-          font-weight: 600;
-          font-size: 13px;
-          text-transform: uppercase;
-          letter-spacing: 0.08em;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-          position: relative;
-        }
-        
-        .elegant-table th:after {
-          content: '';
-          position: absolute;
-          bottom: 0;
-          left: 0;
-          right: 0;
-          height: 1px;
-          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-        }
-        
-        .elegant-table td {
-          padding: 18px 16px;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-          color: rgba(248, 250, 252, 0.85);
-          font-weight: 500;
-          transition: all 0.3s ease;
-        }
-        
-        .elegant-table tr:hover {
-          background: rgba(255, 255, 255, 0.06);
-          transform: scale(1.001);
-        }
-        
-        .elegant-table tr:hover td {
-          color: rgba(248, 250, 252, 0.95);
-        }
-        
-        .header-glass {
-          background: rgba(255, 255, 255, 0.08);
-          backdrop-filter: blur(24px);
-          padding: 24px 0;
-          margin-bottom: 32px;
-          border-radius: 0 0 32px 32px;
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-top: none;
-          box-shadow: 
-            0 8px 32px rgba(0, 0, 0, 0.2),
-            inset 0 1px 0 rgba(255, 255, 255, 0.1);
-          position: relative;
-        }
-        
-        .header-glass:before {
-          content: '';
-          position: absolute;
-          bottom: 0;
-          left: 0;
-          right: 0;
-          height: 1px;
-          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-        }
-        
-        .container {
-          max-width: 1400px;
-          margin: 0 auto;
-          padding: 0 24px;
-        }
-        
-        .grid {
-          display: grid;
-          gap: 24px;
-        }
-        
-        .grid-cols-4 {
-          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        }
-        
-        .grid-cols-3 {
-          grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-        }
-        
-        .flex {
-          display: flex;
-          align-items: center;
-          gap: 16px;
-        }
-        
-        .flex-wrap {
-          flex-wrap: wrap;
-        }
-        
-        .justify-between {
-          justify-content: space-between;
-        }
-        
-        .text-center {
-          text-align: center;
-        }
-        
-        .elegant-input {
+        .search-input {
           padding: 16px 20px;
           border: 1px solid rgba(255, 255, 255, 0.12);
           background: rgba(255, 255, 255, 0.06);
           backdrop-filter: blur(8px);
           border-radius: 12px;
-          font-size: 14px;
+          font-size: 16px;
           font-weight: 500;
           width: 100%;
-          margin-bottom: 16px;
           color: rgba(248, 250, 252, 0.9);
           font-family: inherit;
-          transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+          transition: all 0.3s ease;
         }
         
-        .elegant-input::placeholder {
+        .search-input::placeholder {
           color: rgba(248, 250, 252, 0.5);
         }
         
-        .elegant-input:focus {
+        .search-input:focus {
           outline: none;
           border-color: rgba(99, 102, 241, 0.5);
           background: rgba(255, 255, 255, 0.08);
-          box-shadow: 
-            0 0 0 3px rgba(99, 102, 241, 0.15),
-            0 8px 24px rgba(0, 0, 0, 0.15);
-          transform: translateY(-1px);
+          box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
         }
         
-        .success-alert {
-          padding: 24px;
-          border-radius: 20px;
-          margin-bottom: 32px;
-          background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.15) 100%);
-          border: 1px solid rgba(16, 185, 129, 0.3);
-          backdrop-filter: blur(16px);
-          color: rgba(248, 250, 252, 0.95);
-          box-shadow: 
-            0 8px 32px rgba(16, 185, 129, 0.15),
-            inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        .status-normal { color: #34d399; font-weight: 600; }
+        .status-atencao { color: #fbbf24; font-weight: 600; }
+        .status-urgente { color: #f87171; font-weight: 600; }
+        .status-critico { 
+          color: #ef4444; 
+          font-weight: 700;
+          text-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+          animation: criticalPulse 2s ease-in-out infinite;
         }
         
-        .metric-number {
-          font-size: 48px;
-          font-weight: 800;
-          margin: 16px 0;
-          line-height: 1;
-          letter-spacing: -0.025em;
+        .tooltip {
+          position: relative;
+          cursor: help;
         }
         
-        .metric-label {
-          color: rgba(248, 250, 252, 0.7);
-          font-size: 14px;
-          font-weight: 500;
-          margin-bottom: 8px;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-        }
-        
-        .status-badge {
-          padding: 8px 16px;
-          border-radius: 12px;
-          font-size: 12px;
-          font-weight: 600;
+        .tooltip:hover::after {
+          content: attr(data-tooltip);
+          position: absolute;
+          bottom: 100%;
+          left: 50%;
+          transform: translateX(-50%);
+          background: rgba(0, 0, 0, 0.9);
           color: white;
-          backdrop-filter: blur(8px);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          letter-spacing: 0.025em;
+          padding: 8px 12px;
+          border-radius: 8px;
+          font-size: 12px;
+          white-space: nowrap;
+          z-index: 1000;
+          animation: fadeIn 0.3s ease;
         }
         
-        .badge-normal { 
-          background: linear-gradient(135deg, rgba(52, 211, 153, 0.9) 0%, rgba(16, 185, 129, 0.9) 100%);
-          box-shadow: 0 4px 16px rgba(52, 211, 153, 0.25);
+        @keyframes criticalPulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.6; }
         }
-        .badge-atencao { 
-          background: linear-gradient(135deg, rgba(251, 191, 36, 0.9) 0%, rgba(245, 158, 11, 0.9) 100%);
-          box-shadow: 0 4px 16px rgba(251, 191, 36, 0.25);
+        
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateX(-50%) translateY(5px); }
+          to { opacity: 1; transform: translateX(-50%) translateY(0); }
         }
-        .badge-urgente { 
-          background: linear-gradient(135deg, rgba(248, 113, 113, 0.9) 0%, rgba(239, 68, 68, 0.9) 100%);
-          box-shadow: 0 4px 16px rgba(248, 113, 113, 0.25);
+        
+        @keyframes slideDown {
+          from { opacity: 0; transform: translateY(-20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes bounce {
+          0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+          40% { transform: translateY(-10px); }
+          60% { transform: translateY(-5px); }
+        }
+        
+        .insight-card {
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 16px;
+          padding: 20px;
+          margin-bottom: 12px;
+          border-left: 4px solid;
+          transition: all 0.3s ease;
+        }
+        
+        .insight-alerta {
+          border-left-color: #ef4444;
+          background: rgba(239, 68, 68, 0.1);
+        }
+        
+        .insight-info {
+          border-left-color: #6366f1;
+          background: rgba(99, 102, 241, 0.1);
+        }
+        
+        .insight-sucesso {
+          border-left-color: #10b981;
+          background: rgba(16, 185, 129, 0.1);
+        }
+        
+        .action-buttons {
+          display: flex;
+          gap: 4px;
+          justify-content: center;
+          flex-wrap: wrap;
         }
         
         @media (max-width: 768px) {
-          .container { padding: 0 16px; }
-          .grid-cols-4 { grid-template-columns: 1fr; }
-          .grid-cols-3 { grid-template-columns: 1fr; }
-          .flex { flex-direction: column; align-items: stretch; gap: 12px; }
+          .glass-card { padding: 20px; }
           .metric-card { padding: 20px; }
-          .glass-card { padding: 24px; }
-          .metric-number { font-size: 36px; }
-        }
-        
-        .logo-gradient {
-          background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-        }
-        
-        .text-gradient {
-          background: linear-gradient(135deg, rgba(248, 250, 252, 0.95) 0%, rgba(226, 232, 240, 0.9) 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
+          .action-buttons { flex-direction: column; }
+          .btn-sm { width: 100%; margin: 2px 0; }
         }
       `}</style>
 
-      {/* Header Ultra Premium */}
-      <div className="header-glass">
-        <div className="container">
-          <div className="flex justify-between">
-            <div className="flex">
+      {/* Header Ultra Premium com Timeline */}
+      <div style={{
+        background: 'rgba(255, 255, 255, 0.08)',
+        backdropFilter: 'blur(24px)',
+        padding: '24px 0',
+        marginBottom: '32px',
+        borderRadius: '0 0 32px 32px',
+        border: '1px solid rgba(255, 255, 255, 0.08)',
+        borderTop: 'none',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)'
+      }}>
+        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
               <div style={{
                 width: '72px',
                 height: '72px',
-                background: `
-                  linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%)
-                `,
+                background: `linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%)`,
                 borderRadius: '20px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontSize: '36px',
-                marginRight: '20px',
-                position: 'relative',
-                boxShadow: `
-                  0 8px 32px rgba(99, 102, 241, 0.3),
-                  inset 0 1px 0 rgba(255, 255, 255, 0.2)
-                `
+                boxShadow: '0 8px 32px rgba(99, 102, 241, 0.3)'
               }}>
-                <div style={{
-                  position: 'absolute',
-                  inset: '-3px',
-                  background: `
-                    linear-gradient(135deg, #6366f1, #8b5cf6, #ec4899)
-                  `,
-                  borderRadius: '23px',
-                  opacity: 0.3,
-                  filter: 'blur(8px)',
-                  animation: 'glow 2s ease-in-out infinite alternate'
-                }}></div>
                 🧠
               </div>
               <div>
@@ -955,17 +870,19 @@ export default function MedwayDashboard() {
                   fontSize: '36px',
                   fontWeight: '800',
                   marginBottom: '8px',
-                  letterSpacing: '-0.025em'
-                }} className="logo-gradient">
-                  MEDWAY Analytics
+                  background: `linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%)`,
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent'
+                }}>
+                  MEDWAY Analytics v3.0
                 </h1>
                 <div style={{ 
                   fontSize: '14px', 
                   color: 'rgba(248, 250, 252, 0.7)',
-                  fontWeight: '500',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '12px'
+                  gap: '12px',
+                  flexWrap: 'wrap'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <div style={{
@@ -984,44 +901,32 @@ export default function MedwayDashboard() {
                   <span>{data.length} registros</span>
                   <span>•</span>
                   <span>{lastUpdate.toLocaleTimeString('pt-BR')}</span>
-                  {connectionStatus === 'connected' && (
+                  {realTimeEnabled && (
                     <>
                       <span>•</span>
-                      <span style={{ 
-                        color: '#34d399',
-                        fontWeight: '600',
-                        textShadow: '0 0 8px rgba(52, 211, 153, 0.3)'
-                      }}>
-                        ✨ Dados Reais
+                      <span style={{ color: '#6366f1' }}>
+                        Próxima atualização: {nextUpdateIn}s
                       </span>
-                    </>
-                  )}
-                  {error && (
-                    <>
-                      <span>•</span>
-                      <span style={{ color: '#fbbf24' }}>🔧 Modo Demo</span>
                     </>
                   )}
                 </div>
               </div>
             </div>
             
-            <div className="flex flex-wrap">
-              {/* Seletor de Período Premium */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+              {/* Period Selector */}
               <div style={{
                 background: 'rgba(255, 255, 255, 0.08)',
-                backdropFilter: 'blur(16px)',
                 borderRadius: '16px',
                 padding: '6px',
                 border: '1px solid rgba(255, 255, 255, 0.1)',
-                boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.1)',
                 display: 'flex',
                 gap: '4px'
               }}>
                 {[
                   { key: 'hoje', label: 'Hoje', icon: '📅' },
-                  { key: '7dias', label: '7 dias', icon: '📊' },
-                  { key: '30dias', label: '30 dias', icon: '📈' }
+                  { key: '7dias', label: '7d', icon: '📊' },
+                  { key: '30dias', label: '30d', icon: '📈' }
                 ].map(({ key, label, icon }) => (
                   <button
                     key={key}
@@ -1030,113 +935,72 @@ export default function MedwayDashboard() {
                       setFilters({...filters, periodo: key});
                     }}
                     className={`btn ${activeView === key ? 'btn-primary' : 'btn-secondary'}`}
-                    style={{ 
-                      margin: '0',
-                      padding: '12px 16px',
-                      borderRadius: '12px',
-                      fontSize: '13px'
-                    }}
+                    style={{ margin: '0', padding: '12px 16px', borderRadius: '12px' }}
                   >
-                    <span style={{ marginRight: '6px', fontSize: '14px' }}>{icon}</span>
+                    <span style={{ marginRight: '6px' }}>{icon}</span>
                     <span>{label}</span>
                   </button>
                 ))}
               </div>
 
-              {/* Controles Premium */}
+              {/* Sound Toggle */}
+              <button
+                onClick={() => setSoundEnabled(!soundEnabled)}
+                className={`btn ${soundEnabled ? 'btn-success' : 'btn-secondary'}`}
+                data-tooltip="Alertas sonoros para casos críticos"
+                style={{ padding: '12px' }}
+              >
+                {soundEnabled ? '🔊' : '🔇'}
+              </button>
+
+              {/* Real-time Toggle */}
               <button
                 onClick={() => setRealTimeEnabled(!realTimeEnabled)}
                 className={`btn ${realTimeEnabled ? 'btn-success' : 'btn-secondary'}`}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}
               >
-                <div style={{
-                  fontSize: '16px',
+                <span style={{ 
+                  marginRight: '8px',
                   animation: realTimeEnabled ? 'spin 2s linear infinite' : 'none'
-                }}>🔄</div>
-                <span>{realTimeEnabled ? 'LIVE' : 'PAUSADO'}</span>
+                }}>🔄</span>
+                {realTimeEnabled ? 'LIVE' : 'PAUSADO'}
               </button>
 
               <button
                 onClick={() => setShowFilters(!showFilters)}
                 className="btn btn-primary"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}
               >
-                <span style={{ fontSize: '16px' }}>🔍</span>
-                <span>Filtros</span>
+                🔍 Filtros
               </button>
 
               <button
                 onClick={fetchData}
                 disabled={loading}
                 className="btn btn-primary"
-                style={{ 
-                  opacity: loading ? 0.6 : 1,
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}
+                style={{ opacity: loading ? 0.6 : 1 }}
               >
-                <span style={{ fontSize: '16px' }}>⟳</span>
-                <span>Atualizar</span>
+                ⟳ Atualizar
               </button>
             </div>
+          </div>
+
+          {/* Search Bar Global */}
+          <div style={{ marginTop: '20px', maxWidth: '600px' }}>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="🔍 Busca instantânea: nome do aluno, terapeuta, observações..."
+              className="search-input"
+            />
           </div>
         </div>
       </div>
 
-      <div className="container">
-        {/* Status de Sucesso Premium */}
-        {connectionStatus === 'connected' && !error && (
-          <div className="success-alert">
-            <div className="flex">
-              <div style={{
-                width: '56px',
-                height: '56px',
-                background: 'linear-gradient(135deg, #34d399 0%, #10b981 100%)',
-                borderRadius: '16px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '28px',
-                marginRight: '16px',
-                boxShadow: '0 8px 24px rgba(52, 211, 153, 0.3)'
-              }}>
-                ✅
-              </div>
-              <div>
-                <div style={{ 
-                  fontSize: '20px', 
-                  fontWeight: '700', 
-                  marginBottom: '6px',
-                  color: 'rgba(248, 250, 252, 0.95)'
-                }}>
-                  Conectado com Sucesso ao Banco de Dados!
-                </div>
-                <div style={{ 
-                  fontSize: '14px', 
-                  color: 'rgba(248, 250, 252, 0.8)',
-                  fontWeight: '500'
-                }}>
-                  Exibindo {data.length} registros reais do Supabase • Atualização automática a cada 30 segundos
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Painel de Filtros Avançados Premium */}
-        {showFilters && (
+      <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 24px' }}>
+        {/* Insights IA */}
+        {showInsights && gerarInsightsIA.length > 0 && (
           <div className="glass-card" style={{ animation: 'slideDown 0.4s ease-out' }}>
-            <div className="flex justify-between" style={{ marginBottom: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h2 style={{ 
                 fontSize: '24px', 
                 fontWeight: '700', 
@@ -1145,47 +1009,122 @@ export default function MedwayDashboard() {
                 alignItems: 'center',
                 gap: '12px'
               }}>
-                <span style={{ 
-                  fontSize: '28px',
-                  background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
-                  borderRadius: '12px',
-                  padding: '8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>✨</span>
+                <span style={{ fontSize: '28px' }}>🤖</span>
+                Insights IA em Tempo Real
+              </h2>
+              <button
+                onClick={() => setShowInsights(false)}
+                className="btn btn-secondary btn-sm"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
+              {gerarInsightsIA.map((insight, index) => (
+                <div key={index} className={`insight-card insight-${insight.tipo}`}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                    <span style={{ fontSize: '24px' }}>{insight.icone}</span>
+                    <div style={{ flex: 1 }}>
+                      <h4 style={{ 
+                        fontSize: '16px', 
+                        fontWeight: '600', 
+                        color: 'rgba(248, 250, 252, 0.95)',
+                        marginBottom: '4px'
+                      }}>
+                        {insight.titulo}
+                      </h4>
+                      <p style={{ 
+                        fontSize: '14px', 
+                        color: 'rgba(248, 250, 252, 0.8)',
+                        marginBottom: insight.acao ? '12px' : '0'
+                      }}>
+                        {insight.descricao}
+                      </p>
+                      {insight.acao && (
+                        <button className="btn btn-primary btn-sm">
+                          {insight.acao}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Status de Sucesso Premium */}
+        {connectionStatus === 'connected' && !error && (
+          <div style={{
+            padding: '24px',
+            borderRadius: '20px',
+            marginBottom: '32px',
+            background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.15) 100%)',
+            border: '1px solid rgba(16, 185, 129, 0.3)',
+            backdropFilter: 'blur(16px)',
+            color: 'rgba(248, 250, 252, 0.95)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{
+                width: '56px',
+                height: '56px',
+                background: 'linear-gradient(135deg, #34d399 0%, #10b981 100%)',
+                borderRadius: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '28px'
+              }}>
+                ✅
+              </div>
+              <div>
+                <div style={{ fontSize: '20px', fontWeight: '700', marginBottom: '6px' }}>
+                  Sistema Conectado - Dados em Tempo Real!
+                </div>
+                <div style={{ fontSize: '14px', color: 'rgba(248, 250, 252, 0.8)' }}>
+                  {data.length} registros do Supabase • Atualização automática ativa • Alertas críticos habilitados
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Painel de Filtros Avançados */}
+        {showFilters && (
+          <div className="glass-card" style={{ animation: 'slideDown 0.4s ease-out' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
+              <h2 style={{ 
+                fontSize: '24px', 
+                fontWeight: '700', 
+                color: 'rgba(248, 250, 252, 0.95)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px'
+              }}>
+                <span style={{ fontSize: '28px' }}>✨</span>
                 Filtros Avançados
               </h2>
-              <div className="flex">
-                <button onClick={exportData} className="btn btn-success">
-                  <span style={{ marginRight: '8px', fontSize: '16px' }}>💾</span>
-                  Exportar CSV
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button onClick={exportData} className="btn btn-success btn-sm">
+                  💾 Exportar CSV
                 </button>
-                <button onClick={clearFilters} className="btn btn-secondary">
-                  <span style={{ marginRight: '8px', fontSize: '16px' }}>🗑️</span>
-                  Limpar
+                <button onClick={clearFilters} className="btn btn-secondary btn-sm">
+                  🗑️ Limpar Filtros
                 </button>
               </div>
             </div>
             
-            <div className="grid grid-cols-4">
-              <div style={{ gridColumn: 'span 2' }}>
-                <label className="metric-label">🔍 Busca Geral</label>
-                <input
-                  type="text"
-                  value={filters.busca}
-                  onChange={(e) => setFilters({...filters, busca: e.target.value})}
-                  placeholder="Buscar em todos os campos..."
-                  className="elegant-input"
-                />
-              </div>
-              
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
               <div>
-                <label className="metric-label">👥 Terapeuta</label>
+                <label style={{ color: 'rgba(248, 250, 252, 0.7)', fontSize: '14px', marginBottom: '8px', display: 'block' }}>
+                  👥 Terapeuta
+                </label>
                 <select
                   value={filters.terapeuta}
                   onChange={(e) => setFilters({...filters, terapeuta: e.target.value})}
-                  className="elegant-input"
+                  className="search-input"
+                  style={{ height: '48px' }}
                 >
                   <option value="">Todos os terapeutas</option>
                   {terapeutasUnicos.map((terapeuta: string) => (
@@ -1195,17 +1134,46 @@ export default function MedwayDashboard() {
               </div>
               
               <div>
-                <label className="metric-label">🚨 Status</label>
+                <label style={{ color: 'rgba(248, 250, 252, 0.7)', fontSize: '14px', marginBottom: '8px', display: 'block' }}>
+                  🚨 Status de Urgência
+                </label>
                 <select
                   value={filters.status}
                   onChange={(e) => setFilters({...filters, status: e.target.value})}
-                  className="elegant-input"
+                  className="search-input"
+                  style={{ height: '48px' }}
                 >
                   <option value="">Todos os status</option>
                   <option value="normal">🟢 Normal (0-29)</option>
                   <option value="atencao">🟡 Atenção (30-49)</option>
                   <option value="urgente">🔴 Urgente (50+)</option>
                 </select>
+              </div>
+
+              <div>
+                <label style={{ color: 'rgba(248, 250, 252, 0.7)', fontSize: '14px', marginBottom: '8px', display: 'block' }}>
+                  📊 Pontuação Mínima
+                </label>
+                <input
+                  type="number"
+                  value={filters.pontuacaoMin}
+                  onChange={(e) => setFilters({...filters, pontuacaoMin: e.target.value})}
+                  placeholder="Ex: 30"
+                  className="search-input"
+                />
+              </div>
+
+              <div>
+                <label style={{ color: 'rgba(248, 250, 252, 0.7)', fontSize: '14px', marginBottom: '8px', display: 'block' }}>
+                  📊 Pontuação Máxima
+                </label>
+                <input
+                  type="number"
+                  value={filters.pontuacaoMax}
+                  onChange={(e) => setFilters({...filters, pontuacaoMax: e.target.value})}
+                  placeholder="Ex: 70"
+                  className="search-input"
+                />
               </div>
             </div>
 
@@ -1214,65 +1182,40 @@ export default function MedwayDashboard() {
               padding: '20px',
               background: 'rgba(99, 102, 241, 0.1)',
               borderRadius: '16px',
-              border: '1px solid rgba(99, 102, 241, 0.2)'
-            }} className="flex justify-between">
-              <div style={{ 
-                fontSize: '16px', 
-                color: 'rgba(248, 250, 252, 0.9)',
-                fontWeight: '600'
-              }}>
-                <span style={{ color: '#6366f1' }}>{dadosFiltrados.length}</span> registros encontrados
-                {filters.periodo === 'hoje' && ` de ${metricas.totalHoje} hoje`}
+              border: '1px solid rgba(99, 102, 241, 0.2)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '12px'
+            }}>
+              <div style={{ fontSize: '16px', color: 'rgba(248, 250, 252, 0.9)', fontWeight: '600' }}>
+                📋 <span style={{ color: '#6366f1' }}>{dadosFiltrados.length}</span> registros encontrados
+                {searchTerm && ` para "${searchTerm}"`}
               </div>
-              <div className="flex" style={{ 
-                fontSize: '14px', 
-                color: 'rgba(248, 250, 252, 0.8)', 
-                gap: '20px',
-                fontWeight: '500'
-              }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <div style={{
-                    width: '8px', 
-                    height: '8px', 
-                    background: '#34d399', 
-                    borderRadius: '50%'
-                  }}></div>
-                  {metricas.casosNormaisHoje} Normais
-                </span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <div style={{
-                    width: '8px', 
-                    height: '8px', 
-                    background: '#fbbf24', 
-                    borderRadius: '50%'
-                  }}></div>
-                  {metricas.casosAtencaoHoje} Atenção
-                </span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <div style={{
-                    width: '8px', 
-                    height: '8px', 
-                    background: '#f87171', 
-                    borderRadius: '50%'
-                  }}></div>
-                  {metricas.casosUrgentesHoje} Urgentes
-                </span>
+              <div style={{ display: 'flex', gap: '20px', fontSize: '14px', flexWrap: 'wrap' }}>
+                <span style={{ color: '#34d399' }}>🟢 {metricas.casosNormaisHoje} Normais</span>
+                <span style={{ color: '#fbbf24' }}>🟡 {metricas.casosAtencaoHoje} Atenção</span>
+                <span style={{ color: '#f87171' }}>🔴 {metricas.casosUrgentesHoje} Urgentes</span>
+                <span style={{ color: '#ef4444' }}>⚠️ {metricas.casosCriticosHoje} Críticos</span>
               </div>
             </div>
           </div>
         )}
 
         {/* Cards de Métricas Ultra Premium */}
-        <div className="grid grid-cols-4">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
           <div className="metric-card">
-            <div className="metric-label">
-              Consultas {activeView === 'hoje' ? 'Hoje' : activeView === '7dias' ? 'Últimos 7 dias' : 'Últimos 30 dias'}
+            <div style={{ color: 'rgba(248, 250, 252, 0.7)', fontSize: '14px', marginBottom: '8px' }}>
+              Consultas {activeView === 'hoje' ? 'Hoje' : activeView === '7dias' ? '7 dias' : '30 dias'}
             </div>
-            <div className="metric-number" style={{ 
+            <div style={{ 
+              fontSize: '48px', 
+              fontWeight: '800', 
+              margin: '16px 0',
               background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
               WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              textShadow: '0 0 32px rgba(99, 102, 241, 0.3)'
+              WebkitTextFillColor: 'transparent'
             }}>
               {metricas.totalHoje}
             </div>
@@ -1280,62 +1223,66 @@ export default function MedwayDashboard() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '6px',
-              fontSize: '14px',
-              fontWeight: '600'
+              gap: '6px'
             }}>
-              <span style={{ fontSize: '16px' }}>{crescimentoHoje >= 0 ? '📈' : '📉'}</span>
+              <span>{crescimentoHoje >= 0 ? '📈' : '📉'}</span>
               <span>{Math.abs(crescimentoHoje).toFixed(1)}% vs ontem</span>
             </div>
           </div>
 
           <div className="metric-card">
-            <div className="metric-label">Terapeutas Ativos</div>
-            <div className="metric-number" style={{ 
+            <div style={{ color: 'rgba(248, 250, 252, 0.7)', fontSize: '14px', marginBottom: '8px' }}>
+              Terapeutas Ativos
+            </div>
+            <div style={{ 
+              fontSize: '48px', 
+              fontWeight: '800', 
+              margin: '16px 0',
               background: 'linear-gradient(135deg, #34d399 0%, #10b981 100%)',
               WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              textShadow: '0 0 32px rgba(52, 211, 153, 0.3)'
+              WebkitTextFillColor: 'transparent'
             }}>
               {metricas.terapeutasHoje}
             </div>
-            <div className="metric-label" style={{ color: 'rgba(248, 250, 252, 0.6)' }}>
+            <div style={{ color: 'rgba(248, 250, 252, 0.6)', fontSize: '14px' }}>
               de {terapeutasUnicos.length} total
             </div>
           </div>
 
           <div className="metric-card">
-            <div className="metric-label">Alunos Atendidos</div>
-            <div className="metric-number" style={{ 
-              background: 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              textShadow: '0 0 32px rgba(139, 92, 246, 0.3)'
-            }}>
-              {metricas.alunosHoje}
+            <div style={{ color: 'rgba(248, 250, 252, 0.7)', fontSize: '14px', marginBottom: '8px' }}>
+              Casos Críticos
             </div>
-            <div className="metric-label" style={{ color: 'rgba(248, 250, 252, 0.6)' }}>
-              únicos no período
+            <div style={{ 
+              fontSize: '48px', 
+              fontWeight: '800', 
+              margin: '16px 0'
+            }} className={metricas.casosCriticosHoje > 0 ? 'status-critico' : 'status-normal'}>
+              {metricas.casosCriticosHoje}
+            </div>
+            <div style={{ color: 'rgba(248, 250, 252, 0.6)', fontSize: '14px' }}>
+              Pontuação ≥ 65 - Intervenção imediata
             </div>
           </div>
 
           <div className="metric-card">
-            <div className="metric-label">Pontuação Média</div>
-            <div className="metric-number" style={{ 
+            <div style={{ color: 'rgba(248, 250, 252, 0.7)', fontSize: '14px', marginBottom: '8px' }}>
+              Pontuação Média
+            </div>
+            <div style={{ 
+              fontSize: '48px', 
+              fontWeight: '800', 
+              margin: '16px 0',
               background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
               WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              textShadow: '0 0 32px rgba(251, 191, 36, 0.3)'
+              WebkitTextFillColor: 'transparent'
             }}>
               {metricas.mediaPontuacaoHoje.toFixed(1)}
             </div>
             <div className={
               metricas.mediaPontuacaoHoje >= 50 ? 'status-urgente' :
               metricas.mediaPontuacaoHoje >= 30 ? 'status-atencao' : 'status-normal'
-            } style={{
-              fontSize: '14px',
-              fontWeight: '600'
-            }}>
+            }>
               {metricas.mediaPontuacaoHoje >= 50 ? 'Alto risco' :
                metricas.mediaPontuacaoHoje >= 30 ? 'Atenção' : 'Normal'}
             </div>
@@ -1343,11 +1290,9 @@ export default function MedwayDashboard() {
         </div>
 
         {/* Alertas de Emergência Ultra Premium */}
-        {metricas.casosUrgentesHoje > 0 && (
+        {metricas.casosCriticosHoje > 0 && (
           <div style={{
-            background: `
-              linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(220, 38, 38, 0.15) 100%)
-            `,
+            background: `linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(220, 38, 38, 0.15) 100%)`,
             backdropFilter: 'blur(20px)',
             border: '1px solid rgba(239, 68, 68, 0.3)',
             color: 'rgba(248, 250, 252, 0.95)',
@@ -1356,16 +1301,9 @@ export default function MedwayDashboard() {
             marginBottom: '32px',
             position: 'relative',
             overflow: 'hidden',
-            boxShadow: '0 8px 32px rgba(239, 68, 68, 0.2)'
+            animation: 'criticalPulse 2s ease-in-out infinite'
           }}>
-            <div style={{
-              position: 'absolute',
-              inset: 0,
-              background: 'linear-gradient(45deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.1))',
-              animation: 'pulse 2s ease-in-out infinite'
-            }}></div>
-            
-            <div className="flex" style={{ position: 'relative', alignItems: 'flex-start' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
               <div style={{
                 width: '80px',
                 height: '80px',
@@ -1374,353 +1312,46 @@ export default function MedwayDashboard() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                marginRight: '20px',
                 border: '1px solid rgba(239, 68, 68, 0.3)',
-                backdropFilter: 'blur(8px)'
+                animation: 'bounce 1s ease-in-out infinite'
               }}>
-                <span style={{ 
-                  fontSize: '48px', 
-                  animation: 'bounce 1s ease-in-out infinite'
-                }}>🚨</span>
+                <span style={{ fontSize: '48px' }}>🚨</span>
               </div>
-              <div>
+              <div style={{ flex: 1 }}>
                 <h3 style={{ 
                   fontSize: '28px', 
                   fontWeight: '800', 
                   marginBottom: '8px',
-                  color: '#f87171',
-                  textShadow: '0 0 16px rgba(248, 113, 113, 0.3)'
+                  color: '#f87171'
                 }}>
-                  ALERTA CRÍTICO: {metricas.casosUrgentesHoje} Casos Urgentes
+                  ALERTA CRÍTICO: {metricas.casosCriticosHoje} Casos Críticos
                 </h3>
-                <p style={{ 
-                  color: 'rgba(248, 250, 252, 0.8)', 
-                  fontSize: '16px',
-                  fontWeight: '500',
-                  marginBottom: '16px'
-                }}>
-                  Pontuação ≥ 50 - Intervenção imediata necessária
+                <p style={{ fontSize: '16px', color: 'rgba(248, 250, 252, 0.8)', marginBottom: '16px' }}>
+                  Pontuação ≥ 65 - Intervenção médica imediata necessária
                 </p>
-                <div className="flex" style={{ 
-                  gap: '24px', 
-                  fontSize: '14px',
-                  fontWeight: '500'
-                }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '16px' }}>⏰</span>
-                    <span>Identificados no período atual</span>
-                  </span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '16px' }}>📋</span>
-                    <span>Requer supervisão médica</span>
-                  </span>
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                  <button className="btn btn-danger btn-sm">
+                    📞 Acionar Emergência
+                  </button>
+                  <button className="btn btn-warning btn-sm">
+                    👨‍⚕️ Notificar Médico
+                  </button>
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* Distribuição Visual Ultra Premium */}
-        <div className="grid grid-cols-3">
-          <div className="metric-card">
-            <div className="flex justify-between" style={{ marginBottom: '20px', alignItems: 'flex-start' }}>
-              <h3 style={{ 
-                fontSize: '20px', 
-                fontWeight: '700',
-                color: 'rgba(248, 250, 252, 0.95)'
-              }}>
-                Casos Normais
-              </h3>
-              <div style={{
-                width: '60px',
-                height: '60px',
-                background: 'rgba(52, 211, 153, 0.15)',
-                borderRadius: '18px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: '1px solid rgba(52, 211, 153, 0.3)',
-                backdropFilter: 'blur(8px)'
-              }}>
-                <span style={{ fontSize: '28px' }}>🟢</span>
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="metric-number" style={{ 
-                background: 'linear-gradient(135deg, #34d399 0%, #10b981 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                textShadow: '0 0 24px rgba(52, 211, 153, 0.3)'
-              }}>
-                {metricas.casosNormaisHoje}
-              </div>
-              <div className="metric-label" style={{ marginBottom: '20px' }}>
-                Pontuação 0-29
-              </div>
-              <div className="elegant-progress">
-                <div 
-                  className="progress-fill progress-normal"
-                  style={{ 
-                    width: `${dadosHoje.length > 0 ? (metricas.casosNormaisHoje / dadosHoje.length) * 100 : 0}%` 
-                  }}
-                ></div>
-              </div>
-              <div className="metric-label">
-                {dadosHoje.length > 0 ? ((metricas.casosNormaisHoje / dadosHoje.length) * 100).toFixed(1) : 0}% do total
-              </div>
-            </div>
-          </div>
-
-          <div className="metric-card">
-            <div className="flex justify-between" style={{ marginBottom: '20px', alignItems: 'flex-start' }}>
-              <h3 style={{ 
-                fontSize: '20px', 
-                fontWeight: '700',
-                color: 'rgba(248, 250, 252, 0.95)'
-              }}>
-                Casos Atenção
-              </h3>
-              <div style={{
-                width: '60px',
-                height: '60px',
-                background: 'rgba(251, 191, 36, 0.15)',
-                borderRadius: '18px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: '1px solid rgba(251, 191, 36, 0.3)',
-                backdropFilter: 'blur(8px)'
-              }}>
-                <span style={{ fontSize: '28px' }}>🟡</span>
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="metric-number" style={{ 
-                background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                textShadow: '0 0 24px rgba(251, 191, 36, 0.3)'
-              }}>
-                {metricas.casosAtencaoHoje}
-              </div>
-              <div className="metric-label" style={{ marginBottom: '20px' }}>
-                Pontuação 30-49
-              </div>
-              <div className="elegant-progress">
-                <div 
-                  className="progress-fill progress-atencao"
-                  style={{ 
-                    width: `${dadosHoje.length > 0 ? (metricas.casosAtencaoHoje / dadosHoje.length) * 100 : 0}%` 
-                  }}
-                ></div>
-              </div>
-              <div className="metric-label">
-                {dadosHoje.length > 0 ? ((metricas.casosAtencaoHoje / dadosHoje.length) * 100).toFixed(1) : 0}% do total
-              </div>
-            </div>
-          </div>
-
-          <div className="metric-card">
-            <div className="flex justify-between" style={{ marginBottom: '20px', alignItems: 'flex-start' }}>
-              <h3 style={{ 
-                fontSize: '20px', 
-                fontWeight: '700',
-                color: 'rgba(248, 250, 252, 0.95)'
-              }}>
-                Casos Urgentes
-              </h3>
-              <div style={{
-                width: '60px',
-                height: '60px',
-                background: 'rgba(248, 113, 113, 0.15)',
-                borderRadius: '18px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: '1px solid rgba(248, 113, 113, 0.3)',
-                backdropFilter: 'blur(8px)'
-              }}>
-                <span style={{ fontSize: '28px' }}>🔴</span>
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="metric-number" style={{ 
-                background: 'linear-gradient(135deg, #f87171 0%, #ef4444 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                textShadow: '0 0 24px rgba(248, 113, 113, 0.3)'
-              }}>
-                {metricas.casosUrgentesHoje}
-              </div>
-              <div className="metric-label" style={{ marginBottom: '20px' }}>
-                Pontuação ≥ 50
-              </div>
-              <div className="elegant-progress">
-                <div 
-                  className="progress-fill progress-urgente"
-                  style={{ 
-                    width: `${dadosHoje.length > 0 ? (metricas.casosUrgentesHoje / dadosHoje.length) * 100 : 0}%` 
-                  }}
-                ></div>
-              </div>
-              <div className="metric-label">
-                {dadosHoje.length > 0 ? ((metricas.casosUrgentesHoje / dadosHoje.length) * 100).toFixed(1) : 0}% do total
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Gráfico de Atividade Ultra Premium */}
-        <div className="glass-card">
-          <h3 style={{ 
-            fontSize: '24px', 
-            fontWeight: '700', 
-            marginBottom: '24px',
-            color: 'rgba(248, 250, 252, 0.95)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px'
-          }}>
-            <span style={{
-              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-              borderRadius: '12px',
-              padding: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '24px'
-            }}>📊</span>
-            Atividade por Hora - {activeView === 'hoje' ? 'Hoje' : activeView === '7dias' ? 'Últimos 7 dias' : 'Últimos 30 dias'}
-          </h3>
-          
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(24, 1fr)', 
-            gap: '6px',
-            marginBottom: '24px',
-            padding: '20px',
-            background: 'rgba(255, 255, 255, 0.04)',
-            borderRadius: '16px',
-            border: '1px solid rgba(255, 255, 255, 0.06)'
-          }}>
-            {dadosPorHora.map((item, index) => {
-              const altura = Math.max(item.consultas * 10, 8);
-              const isAtivo = item.consultas > 0;
-              
-              return (
-                <div key={index} style={{ 
-                  textAlign: 'center',
-                  position: 'relative'
-                }}>
-                  <div 
-                    style={{
-                      background: isAtivo ? 
-                        `linear-gradient(to top, #6366f1 0%, #8b5cf6 50%, #ec4899 100%)` :
-                        'rgba(71, 85, 105, 0.3)',
-                      borderRadius: '8px',
-                      marginBottom: '12px',
-                      transition: 'all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-                      cursor: 'pointer',
-                      height: `${altura}px`,
-                      minHeight: '8px',
-                      boxShadow: isAtivo ? 
-                        '0 4px 16px rgba(99, 102, 241, 0.3)' :
-                        '0 2px 8px rgba(71, 85, 105, 0.2)',
-                      position: 'relative'
-                    }}
-                    title={`${item.hora}: ${item.consultas} consultas`}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'scale(1.1) translateY(-2px)';
-                      e.currentTarget.style.boxShadow = isAtivo ? 
-                        '0 8px 24px rgba(99, 102, 241, 0.4)' :
-                        '0 4px 16px rgba(71, 85, 105, 0.3)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'scale(1) translateY(0)';
-                      e.currentTarget.style.boxShadow = isAtivo ? 
-                        '0 4px 16px rgba(99, 102, 241, 0.3)' :
-                        '0 2px 8px rgba(71, 85, 105, 0.2)';
-                    }}
-                  >
-                    {/* Highlight overlay */}
-                    {isAtivo && (
-                      <div style={{
-                        position: 'absolute',
-                        top: '0',
-                        left: '0',
-                        right: '0',
-                        height: '40%',
-                        background: 'rgba(255, 255, 255, 0.2)',
-                        borderRadius: '8px 8px 0 0'
-                      }}></div>
-                    )}
-                  </div>
-                  <div style={{ 
-                    fontSize: '11px', 
-                    color: isAtivo ? 'rgba(248, 250, 252, 0.8)' : 'rgba(248, 250, 252, 0.5)',
-                    fontWeight: isAtivo ? '600' : '400'
-                  }}>
-                    {item.hora.split(':')[0]}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          
-          <div style={{
-            textAlign: 'center',
-            padding: '20px',
-            background: 'rgba(99, 102, 241, 0.1)',
-            borderRadius: '16px',
-            border: '1px solid rgba(99, 102, 241, 0.2)'
-          }}>
-            <p style={{ 
-              fontSize: '16px', 
-              color: 'rgba(248, 250, 252, 0.9)',
-              fontWeight: '500',
-              margin: 0
-            }}>
-              Pico: <span style={{ 
-                color: '#6366f1', 
-                fontWeight: '700',
-                textShadow: '0 0 8px rgba(99, 102, 241, 0.3)'
-              }}>
-                {Math.max(...dadosPorHora.map(h => h.consultas))}
-              </span> consultas
-              {' • '}
-              Total: <span style={{ 
-                color: '#8b5cf6', 
-                fontWeight: '700',
-                textShadow: '0 0 8px rgba(139, 92, 246, 0.3)'
-              }}>
-                {dadosPorHora.reduce((acc, h) => acc + h.consultas, 0)}
-              </span> consultas no período
-            </p>
-          </div>
-        </div>
-
-        {/* Tabela Ultra Premium */}
+        {/* Tabela Ultra Premium com Ações Rápidas */}
         <div className="glass-card">
           <div style={{
             padding: '24px',
-            background: `
-              linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%)
-            `,
+            background: `linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%)`,
             borderRadius: '16px 16px 0 0',
             marginBottom: '0',
-            border: '1px solid rgba(99, 102, 241, 0.2)',
-            position: 'relative'
+            border: '1px solid rgba(99, 102, 241, 0.2)'
           }}>
-            <div style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              height: '1px',
-              background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent)'
-            }}></div>
-            
-            <div className="flex justify-between">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
               <div>
                 <h3 style={{ 
                   fontSize: '24px', 
@@ -1734,180 +1365,200 @@ export default function MedwayDashboard() {
                   <span style={{ fontSize: '28px' }}>📋</span>
                   Registros Detalhados ({dadosFiltrados.length})
                 </h3>
-                <p style={{ 
-                  color: 'rgba(248, 250, 252, 0.8)', 
-                  fontSize: '16px',
-                  fontWeight: '500',
-                  margin: 0
-                }}>
-                  Monitoramento em tempo real dos atendimentos • Dados do Supabase
+                <p style={{ color: 'rgba(248, 250, 252, 0.8)', fontSize: '16px', margin: 0 }}>
+                  Monitoramento em tempo real • Ações rápidas integradas
                 </p>
               </div>
-              <div style={{
-                display: 'flex',
-                gap: '20px',
-                fontSize: '13px',
-                fontWeight: '500'
-              }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '20px', fontSize: '13px', flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ 
-                    width: '12px', 
-                    height: '12px', 
-                    background: 'linear-gradient(135deg, #34d399, #10b981)', 
-                    borderRadius: '50%',
-                    boxShadow: '0 0 8px rgba(52, 211, 153, 0.3)'
-                  }}></div>
-                  <span style={{ color: 'rgba(248, 250, 252, 0.9)' }}>Normal</span>
+                  <div style={{ width: '12px', height: '12px', background: '#34d399', borderRadius: '50%' }}></div>
+                  <span>Normal</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ 
-                    width: '12px', 
-                    height: '12px', 
-                    background: 'linear-gradient(135deg, #fbbf24, #f59e0b)', 
-                    borderRadius: '50%',
-                    boxShadow: '0 0 8px rgba(251, 191, 36, 0.3)'
-                  }}></div>
-                  <span style={{ color: 'rgba(248, 250, 252, 0.9)' }}>Atenção</span>
+                  <div style={{ width: '12px', height: '12px', background: '#fbbf24', borderRadius: '50%' }}></div>
+                  <span>Atenção</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ 
-                    width: '12px', 
-                    height: '12px', 
-                    background: 'linear-gradient(135deg, #f87171, #ef4444)', 
-                    borderRadius: '50%',
-                    boxShadow: '0 0 8px rgba(248, 113, 113, 0.3)'
-                  }}></div>
-                  <span style={{ color: 'rgba(248, 250, 252, 0.9)' }}>Urgente</span>
+                  <div style={{ width: '12px', height: '12px', background: '#f87171', borderRadius: '50%' }}></div>
+                  <span>Urgente</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ width: '12px', height: '12px', background: '#ef4444', borderRadius: '50%', animation: 'pulse 1s infinite' }}></div>
+                  <span>Crítico</span>
                 </div>
               </div>
             </div>
           </div>
           
           <div style={{ overflowX: 'auto' }}>
-            <table className="elegant-table">
+            <table style={{ 
+              width: '100%',
+              borderCollapse: 'collapse',
+              background: 'rgba(255, 255, 255, 0.04)',
+              borderRadius: '0 0 16px 16px'
+            }}>
               <thead>
-                <tr>
-                  <th>Data/Hora</th>
-                  <th>Aluno</th>
-                  <th>Terapeuta</th>
-                  <th>Pontuação</th>
-                  <th>Status</th>
-                  <th>Observações</th>
+                <tr style={{ background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%)' }}>
+                  <th style={{ padding: '20px 16px', color: 'rgba(248, 250, 252, 0.95)', fontSize: '13px', textAlign: 'left' }}>Paciente</th>
+                  <th style={{ padding: '20px 16px', color: 'rgba(248, 250, 252, 0.95)', fontSize: '13px', textAlign: 'left' }}>Terapeuta</th>
+                  <th style={{ padding: '20px 16px', color: 'rgba(248, 250, 252, 0.95)', fontSize: '13px', textAlign: 'center' }}>Pontuação</th>
+                  <th style={{ padding: '20px 16px', color: 'rgba(248, 250, 252, 0.95)', fontSize: '13px', textAlign: 'center' }}>Status</th>
+                  <th style={{ padding: '20px 16px', color: 'rgba(248, 250, 252, 0.95)', fontSize: '13px', textAlign: 'center' }}>Tempo</th>
+                  <th style={{ padding: '20px 16px', color: 'rgba(248, 250, 252, 0.95)', fontSize: '13px', textAlign: 'center' }}>Ações</th>
+                  <th style={{ padding: '20px 16px', color: 'rgba(248, 250, 252, 0.95)', fontSize: '13px', textAlign: 'left' }}>Observações</th>
                 </tr>
               </thead>
               <tbody>
                 {dadosFiltrados.slice(0, 50).map((item, index) => {
                   const pontuacao = Number(item.pontuacao) || 0;
-                  const status = pontuacao >= 50 ? 'urgente' : pontuacao >= 30 ? 'atencao' : 'normal';
+                  const urgencia = item.urgencia_nivel || 'baixa';
                   const statusConfig = {
-                    urgente: { 
+                    critica: { 
+                      emoji: '⚠️', 
+                      text: 'CRÍTICO', 
+                      bg: 'rgba(239, 68, 68, 0.15)', 
+                      borderColor: '#ef4444',
+                      textColor: '#ef4444'
+                    },
+                    alta: { 
                       emoji: '🔴', 
                       text: 'Urgente', 
                       bg: 'rgba(248, 113, 113, 0.15)', 
                       borderColor: '#f87171',
-                      badgeClass: 'badge-urgente'
+                      textColor: '#f87171'
                     },
-                    atencao: { 
+                    media: { 
                       emoji: '🟡', 
                       text: 'Atenção', 
                       bg: 'rgba(251, 191, 36, 0.15)', 
                       borderColor: '#fbbf24',
-                      badgeClass: 'badge-atencao'
+                      textColor: '#fbbf24'
                     },
-                    normal: { 
+                    baixa: { 
                       emoji: '🟢', 
                       text: 'Normal', 
                       bg: 'rgba(52, 211, 153, 0.15)', 
                       borderColor: '#34d399',
-                      badgeClass: 'badge-normal'
+                      textColor: '#34d399'
                     }
                   };
+                  
+                  const config = statusConfig[urgencia];
                   
                   return (
                     <tr 
                       key={item.id || index}
                       style={{
-                        borderLeft: `3px solid ${statusConfig[status].borderColor}`,
-                        transition: 'all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
+                        borderLeft: `3px solid ${config.borderColor}`,
+                        transition: 'all 0.3s ease',
+                        borderBottom: '1px solid rgba(255, 255, 255, 0.06)'
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = statusConfig[status].bg;
-                        e.currentTarget.style.transform = 'scale(1.002)';
+                        e.currentTarget.style.backgroundColor = config.bg;
+                        e.currentTarget.style.transform = 'scale(1.001)';
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.backgroundColor = 'transparent';
                         e.currentTarget.style.transform = 'scale(1)';
                       }}
                     >
-                      <td>
-                        <div style={{ 
-                          fontSize: '14px', 
-                          fontWeight: '600',
-                          color: 'rgba(248, 250, 252, 0.9)',
-                          marginBottom: '2px'
-                        }}>
-                          {new Date(item.created_at).toLocaleDateString('pt-BR')}
+                      <td style={{ padding: '18px 16px', color: 'rgba(248, 250, 252, 0.9)' }}>
+                        <div style={{ fontWeight: '600', fontSize: '14px', marginBottom: '2px' }}>
+                          {item.nome_aluno || 'N/A'}
                         </div>
-                        <div style={{ 
-                          fontSize: '12px', 
-                          color: 'rgba(248, 250, 252, 0.6)',
-                          fontWeight: '500'
-                        }}>
-                          {new Date(item.created_at).toLocaleTimeString('pt-BR')}
+                        <div style={{ fontSize: '12px', color: 'rgba(248, 250, 252, 0.6)' }}>
+                          ID: {item.id}
                         </div>
                       </td>
-                      <td style={{ 
-                        fontWeight: '600',
-                        color: 'rgba(248, 250, 252, 0.9)'
-                      }}>
-                        {item.nome_aluno || 'N/A'}
-                      </td>
-                      <td style={{ 
-                        color: 'rgba(248, 250, 252, 0.85)'
-                      }}>
+                      <td style={{ padding: '18px 16px', color: 'rgba(248, 250, 252, 0.85)', fontSize: '14px' }}>
                         {item.terapeuta || 'N/A'}
                       </td>
-                      <td>
-                        <div style={{ 
-                          display: 'flex', 
-                          alignItems: 'center',
-                          gap: '12px'
-                        }}>
+                      <td style={{ padding: '18px 16px', textAlign: 'center' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
                           <span style={{ 
-                            fontSize: '16px', 
+                            fontSize: '18px', 
                             fontWeight: '700', 
-                            color: statusConfig[status].borderColor,
-                            textShadow: `0 0 8px ${statusConfig[status].borderColor}30`
+                            color: config.textColor
                           }}>
                             {pontuacao.toFixed(1)}
                           </span>
                           <div style={{ 
                             width: '60px', 
-                            height: '8px', 
+                            height: '6px', 
                             background: 'rgba(71, 85, 105, 0.3)', 
-                            borderRadius: '4px',
-                            overflow: 'hidden',
-                            position: 'relative'
+                            borderRadius: '3px',
+                            overflow: 'hidden'
                           }}>
                             <div 
                               style={{
                                 height: '100%',
-                                background: `linear-gradient(135deg, ${statusConfig[status].borderColor}, ${statusConfig[status].borderColor}dd)`,
+                                background: config.borderColor,
                                 width: `${Math.min(pontuacao, 100)}%`,
-                                transition: 'width 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-                                borderRadius: '4px',
-                                boxShadow: `0 0 8px ${statusConfig[status].borderColor}40`
+                                borderRadius: '3px',
+                                transition: 'width 0.6s ease'
                               }}
                             ></div>
                           </div>
                         </div>
                       </td>
-                      <td>
-                        <span className={`status-badge ${statusConfig[status].badgeClass}`}>
-                          {statusConfig[status].emoji} {statusConfig[status].text}
+                      <td style={{ padding: '18px 16px', textAlign: 'center' }}>
+                        <span style={{
+                          padding: '6px 12px',
+                          borderRadius: '12px',
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          background: config.bg,
+                          color: config.textColor,
+                          border: `1px solid ${config.borderColor}`,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}>
+                          {config.emoji} {config.text}
                         </span>
                       </td>
+                      <td style={{ padding: '18px 16px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '14px', fontWeight: '600', color: 'rgba(248, 250, 252, 0.9)' }}>
+                          {formatTempo(item.tempo_desde_criacao || 0)}
+                        </div>
+                        <div style={{ fontSize: '12px', color: 'rgba(248, 250, 252, 0.6)' }}>
+                          atrás
+                        </div>
+                      </td>
+                      <td style={{ padding: '18px 16px' }}>
+                        <div className="action-buttons">
+                          <button 
+                            onClick={() => acoesRapidas.ligar(item)}
+                            className="btn btn-primary btn-sm"
+                            data-tooltip="Ligar para o paciente"
+                          >
+                            📞
+                          </button>
+                          <button 
+                            onClick={() => acoesRapidas.email(item)}
+                            className="btn btn-secondary btn-sm"
+                            data-tooltip="Enviar email"
+                          >
+                            ✉️
+                          </button>
+                          <button 
+                            onClick={() => acoesRapidas.agendar(item)}
+                            className="btn btn-warning btn-sm"
+                            data-tooltip="Agendar consulta"
+                          >
+                            📅
+                          </button>
+                          <button 
+                            onClick={() => acoesRapidas.observacoes(item)}
+                            className="btn btn-success btn-sm"
+                            data-tooltip="Ver observações"
+                          >
+                            📝
+                          </button>
+                        </div>
+                      </td>
                       <td style={{ 
+                        padding: '18px 16px', 
                         maxWidth: '200px', 
                         fontSize: '13px',
                         color: 'rgba(248, 250, 252, 0.75)'
@@ -1916,9 +1567,11 @@ export default function MedwayDashboard() {
                           overflow: 'hidden', 
                           textOverflow: 'ellipsis', 
                           whiteSpace: 'nowrap',
-                          cursor: 'help'
-                        }} title={item.observacoes}>
-                          {item.observacoes || '-'}
+                          cursor: 'pointer'
+                        }} 
+                        onClick={() => setSelectedPatient(item)}
+                        title={item.observacoes}>
+                          {item.observacoes || 'Sem observações registradas'}
                         </div>
                       </td>
                     </tr>
@@ -1932,15 +1585,10 @@ export default function MedwayDashboard() {
             <div style={{ 
               textAlign: 'center', 
               padding: '80px 20px',
-              background: 'rgba(255, 255, 255, 0.02)',
-              borderRadius: '0 0 16px 16px'
+              background: 'rgba(255, 255, 255, 0.02)'
             }}>
-              <div style={{ 
-                fontSize: '80px', 
-                marginBottom: '24px',
-                opacity: 0.6
-              }}>
-                🔍
+              <div style={{ fontSize: '80px', marginBottom: '24px', opacity: 0.6 }}>
+                {searchTerm ? '🔍' : '📋'}
               </div>
               <div style={{ 
                 color: 'rgba(248, 250, 252, 0.8)', 
@@ -1948,23 +1596,92 @@ export default function MedwayDashboard() {
                 fontWeight: '600',
                 marginBottom: '8px'
               }}>
-                Nenhum registro encontrado
+                {searchTerm ? `Nenhum resultado para "${searchTerm}"` : 'Nenhum registro encontrado'}
               </div>
-              <div style={{ 
-                color: 'rgba(248, 250, 252, 0.5)', 
-                fontSize: '14px'
-              }}>
-                Ajuste os filtros para ver mais resultados.
+              <div style={{ color: 'rgba(248, 250, 252, 0.5)', fontSize: '14px' }}>
+                {searchTerm ? 'Tente uma busca diferente' : 'Ajuste os filtros para ver mais resultados'}
               </div>
             </div>
           )}
         </div>
 
+        {/* Modal de Observações */}
+        {selectedPatient && (
+          <div style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.8)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '20px'
+          }} onClick={() => setSelectedPatient(null)}>
+            <div style={{
+              background: 'rgba(255, 255, 255, 0.1)',
+              backdropFilter: 'blur(20px)',
+              borderRadius: '24px',
+              padding: '32px',
+              maxWidth: '600px',
+              width: '100%',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              color: 'rgba(248, 250, 252, 0.95)'
+            }} onClick={e => e.stopPropagation()}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                <h3 style={{ fontSize: '24px', fontWeight: '700' }}>
+                  📝 Observações Detalhadas
+                </h3>
+                <button 
+                  onClick={() => setSelectedPatient(null)}
+                  className="btn btn-secondary btn-sm"
+                >
+                  ✕
+                </button>
+              </div>
+              
+              <div style={{ marginBottom: '20px' }}>
+                <div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px' }}>
+                  {selectedPatient.nome_aluno}
+                </div>
+                <div style={{ fontSize: '14px', color: 'rgba(248, 250, 252, 0.7)' }}>
+                  Terapeuta: {selectedPatient.terapeuta} • Pontuação: {selectedPatient.pontuacao}
+                </div>
+              </div>
+              
+              <div style={{
+                background: 'rgba(255, 255, 255, 0.05)',
+                borderRadius: '16px',
+                padding: '20px',
+                fontSize: '16px',
+                lineHeight: 1.6,
+                marginBottom: '24px'
+              }}>
+                {selectedPatient.observacoes || 'Sem observações registradas para este paciente.'}
+              </div>
+              
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                <button 
+                  onClick={() => acoesRapidas.email(selectedPatient)}
+                  className="btn btn-primary"
+                >
+                  ✉️ Enviar Email
+                </button>
+                <button 
+                  onClick={() => acoesRapidas.agendar(selectedPatient)}
+                  className="btn btn-success"
+                >
+                  📅 Agendar Follow-up
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Rodapé Ultra Premium */}
         <div style={{ 
           textAlign: 'center', 
-          margin: '80px 0 60px',
-          animation: 'fadeIn 1s ease-out'
+          margin: '80px 0 60px'
         }}>
           <div style={{
             display: 'inline-flex',
@@ -1975,46 +1692,21 @@ export default function MedwayDashboard() {
             borderRadius: '28px',
             padding: '32px 40px',
             border: '1px solid rgba(255, 255, 255, 0.1)',
-            boxShadow: `
-              0 20px 40px rgba(0, 0, 0, 0.25),
-              inset 0 1px 0 rgba(255, 255, 255, 0.1)
-            `,
-            position: 'relative'
+            boxShadow: '0 20px 40px rgba(0, 0, 0, 0.25)',
+            flexWrap: 'wrap',
+            justifyContent: 'center'
           }}>
-            <div style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              height: '1px',
-              background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent)'
-            }}></div>
-            
             <div style={{
               width: '80px',
               height: '80px',
-              background: `
-                linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%)
-              `,
+              background: `linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%)`,
               borderRadius: '20px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               fontSize: '40px',
-              position: 'relative',
               boxShadow: '0 8px 32px rgba(99, 102, 241, 0.3)'
             }}>
-              <div style={{
-                position: 'absolute',
-                inset: '-3px',
-                background: `
-                  linear-gradient(135deg, #6366f1, #8b5cf6, #ec4899)
-                `,
-                borderRadius: '23px',
-                opacity: 0.3,
-                filter: 'blur(8px)',
-                animation: 'glow 3s ease-in-out infinite alternate'
-              }}></div>
               🧠
             </div>
             
@@ -2022,14 +1714,16 @@ export default function MedwayDashboard() {
               <div style={{ 
                 fontWeight: '800', 
                 fontSize: '28px', 
-                marginBottom: '4px'
-              }} className="logo-gradient">
+                marginBottom: '4px',
+                background: `linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%)`,
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent'
+              }}>
                 MEDWAY Analytics v3.0
               </div>
               <div style={{ 
                 color: 'rgba(248, 250, 252, 0.7)', 
-                fontSize: '16px',
-                fontWeight: '500'
+                fontSize: '16px'
               }}>
                 Sistema Inteligente de Monitoramento Psicológico
               </div>
@@ -2038,46 +1732,22 @@ export default function MedwayDashboard() {
             <div style={{ 
               textAlign: 'right', 
               fontSize: '13px', 
-              color: 'rgba(248, 250, 252, 0.6)',
-              fontWeight: '500'
+              color: 'rgba(248, 250, 252, 0.6)'
             }}>
               <div style={{ marginBottom: '6px' }}>
-                Última atualização: {lastUpdate.toLocaleString('pt-BR')}
+                🔄 Última atualização: {lastUpdate.toLocaleString('pt-BR')}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                {connectionStatus === 'connected' ? (
-                  <>
-                    <div style={{
-                      width: '6px',
-                      height: '6px',
-                      background: '#34d399',
-                      borderRadius: '50%',
-                      boxShadow: '0 0 8px rgba(52, 211, 153, 0.5)',
-                      animation: 'pulse 2s infinite'
-                    }}></div>
-                    <span style={{ color: '#34d399' }}>Conectado ao Supabase</span>
-                  </>
-                ) : connectionStatus === 'error' ? (
-                  <>
-                    <div style={{
-                      width: '6px',
-                      height: '6px',
-                      background: '#fbbf24',
-                      borderRadius: '50%'
-                    }}></div>
-                    <span style={{ color: '#fbbf24' }}>Modo Demo</span>
-                  </>
-                ) : (
-                  <>
-                    <div style={{
-                      width: '6px',
-                      height: '6px',
-                      background: 'rgba(248, 250, 252, 0.5)',
-                      borderRadius: '50%'
-                    }}></div>
-                    <span>Conectando...</span>
-                  </>
-                )}
+                <div style={{
+                  width: '6px',
+                  height: '6px',
+                  background: connectionStatus === 'connected' ? '#34d399' : '#f87171',
+                  borderRadius: '50%',
+                  animation: connectionStatus === 'connected' ? 'pulse 2s infinite' : 'none'
+                }}></div>
+                <span style={{ color: connectionStatus === 'connected' ? '#34d399' : '#f87171' }}>
+                  {connectionStatus === 'connected' ? 'Sistema Online' : 'Modo Demo'}
+                </span>
               </div>
             </div>
           </div>
@@ -2085,30 +1755,13 @@ export default function MedwayDashboard() {
       </div>
       
       <style>{`
-        @keyframes slideDown {
-          from { opacity: 0; transform: translateY(-20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
         }
-        @keyframes glow {
-          from { opacity: 0.2; }
-          to { opacity: 0.5; }
-        }
         @keyframes pulse {
           0%, 100% { opacity: 1; }
           50% { opacity: 0.5; }
-        }
-        @keyframes bounce {
-          0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
-          40% { transform: translateY(-10px); }
-          60% { transform: translateY(-5px); }
         }
       `}</style>
     </div>
