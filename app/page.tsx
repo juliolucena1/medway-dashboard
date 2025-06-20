@@ -49,8 +49,8 @@ export default function MedwayDashboard() {
   });
 
   // Configuração Supabase
-  const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://dtvaadwcfzpgbthkjlqa.supabase.co';
-  const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR0dmFhZHdjZnpwZ2J0aGtqbHFhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA3MzIxMDAsImV4cCI6MjA0NjMwODEwMH0.JIENlyeyk0ibOq0Nb4ydFSFbsPprBFICfNHlvF8guwU';
+  const SUPABASE_URL = 'https://dtvaadwcfzpgbthkjlqa.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR0dmFhZHdjZnpwZ2J0aGtqbHFhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA3MzIxMDAsImV4cCI6MjA0NjMwODEwMH0.JIENlyeyk0ibOq0Nb4ydFSFbsPprBFICfNHlvF8guwU';
 
   // Função para mapear dados da estrutura real para a esperada
   const mapearDados = (dadosOriginais: Consulta[]): ConsultaNormalizada[] => {
@@ -294,71 +294,158 @@ export default function MedwayDashboard() {
     return (
       <div style={{
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        background: `
+          linear-gradient(135deg, rgba(15, 23, 42, 0.97) 0%, rgba(30, 41, 59, 0.95) 100%),
+          radial-gradient(circle at 25% 25%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
+          radial-gradient(circle at 75% 75%, rgba(168, 85, 247, 0.12) 0%, transparent 50%)
+        `,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        fontFamily: 'Arial, sans-serif'
+        fontFamily: `'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`,
+        position: 'relative',
+        overflow: 'hidden'
       }}>
+        {/* Animated background particles */}
         <div style={{
-          background: 'rgba(255, 255, 255, 0.95)',
-          borderRadius: '20px',
-          padding: '40px',
+          position: 'absolute',
+          inset: 0,
+          background: `
+            radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.1) 0%, transparent 50%),
+            radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.1) 0%, transparent 50%)
+          `,
+          animation: 'float 6s ease-in-out infinite'
+        }}></div>
+        
+        <div style={{
+          background: 'rgba(255, 255, 255, 0.05)',
+          backdropFilter: 'blur(20px)',
+          borderRadius: '32px',
+          padding: '48px 40px',
           textAlign: 'center',
-          boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
-          maxWidth: '400px',
-          width: '90%'
+          boxShadow: `
+            0 25px 50px -12px rgba(0, 0, 0, 0.25),
+            0 0 0 1px rgba(255, 255, 255, 0.05),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1)
+          `,
+          maxWidth: '480px',
+          width: '90%',
+          position: 'relative',
+          animation: 'slideUp 0.8s ease-out'
         }}>
+          {/* Logo gradient */}
           <div style={{
-            width: '80px',
-            height: '80px',
-            background: 'linear-gradient(45deg, #667eea, #764ba2)',
-            borderRadius: '16px',
+            width: '100px',
+            height: '100px',
+            background: `
+              linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%)
+            `,
+            borderRadius: '24px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            margin: '0 auto 20px',
-            fontSize: '40px'
+            margin: '0 auto 32px',
+            fontSize: '48px',
+            position: 'relative',
+            animation: 'pulse 2s ease-in-out infinite'
           }}>
+            <div style={{
+              position: 'absolute',
+              inset: '-4px',
+              background: `
+                linear-gradient(135deg, #6366f1, #8b5cf6, #ec4899)
+              `,
+              borderRadius: '28px',
+              opacity: 0.3,
+              filter: 'blur(8px)',
+              animation: 'glow 2s ease-in-out infinite alternate'
+            }}></div>
             🧠
           </div>
-          <h2 style={{ color: '#333', marginBottom: '10px', fontSize: '24px' }}>MEDWAY Analytics</h2>
-          <p style={{ color: '#666', marginBottom: '20px' }}>Carregando dados em tempo real...</p>
-          <div style={{ marginBottom: '10px' }}>
-            <div style={{
-              width: '8px',
-              height: '8px',
-              background: '#667eea',
-              borderRadius: '50%',
-              display: 'inline-block',
-              margin: '0 3px',
-              animation: 'bounce 1.4s ease-in-out infinite'
-            }}></div>
-            <div style={{
-              width: '8px',
-              height: '8px',
-              background: '#764ba2',
-              borderRadius: '50%',
-              display: 'inline-block',
-              margin: '0 3px',
-              animation: 'bounce 1.4s ease-in-out 0.16s infinite'
-            }}></div>
-            <div style={{
-              width: '8px',
-              height: '8px',
-              background: '#f093fb',
-              borderRadius: '50%',
-              display: 'inline-block',
-              margin: '0 3px',
-              animation: 'bounce 1.4s ease-in-out 0.32s infinite'
-            }}></div>
+          
+          <h2 style={{ 
+            color: '#f8fafc', 
+            marginBottom: '16px', 
+            fontSize: '32px',
+            fontWeight: '700',
+            letterSpacing: '-0.025em',
+            background: `
+              linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)
+            `,
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent'
+          }}>
+            MEDWAY Analytics
+          </h2>
+          
+          <p style={{ 
+            color: 'rgba(248, 250, 252, 0.7)', 
+            marginBottom: '32px',
+            fontSize: '18px',
+            fontWeight: '400',
+            lineHeight: 1.6
+          }}>
+            Iniciando sistema de monitoramento em tempo real...
+          </p>
+          
+          {/* Elegant loading dots */}
+          <div style={{ 
+            display: 'flex',
+            justifyContent: 'center',
+            gap: '8px',
+            marginBottom: '24px'
+          }}>
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                style={{
+                  width: '12px',
+                  height: '12px',
+                  background: `
+                    linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)
+                  `,
+                  borderRadius: '50%',
+                  animation: `bounce 1.4s ease-in-out ${i * 0.16}s infinite`
+                }}
+              ></div>
+            ))}
           </div>
-          <p style={{ color: '#999', fontSize: '12px' }}>Conectando ao Supabase...</p>
+          
+          <div style={{
+            padding: '16px 24px',
+            background: 'rgba(99, 102, 241, 0.1)',
+            borderRadius: '16px',
+            border: '1px solid rgba(99, 102, 241, 0.2)',
+            color: 'rgba(248, 250, 252, 0.8)',
+            fontSize: '14px',
+            fontWeight: '500'
+          }}>
+            <div style={{ marginBottom: '4px' }}>🔗 Conectando ao Supabase...</div>
+            <div style={{ color: 'rgba(99, 102, 241, 0.8)' }}>Estabelecendo conexão segura</div>
+          </div>
         </div>
+        
         <style>{`
+          @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
           @keyframes bounce {
-            0%, 80%, 100% { transform: scale(0); }
-            40% { transform: scale(1); }
+            0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
+            40% { transform: scale(1.2); opacity: 1; }
+          }
+          @keyframes float {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(30px, -30px) rotate(120deg); }
+            66% { transform: translate(-20px, 20px) rotate(240deg); }
+          }
+          @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+          }
+          @keyframes glow {
+            from { opacity: 0.2; }
+            to { opacity: 0.4; }
           }
         `}</style>
       </div>
@@ -368,156 +455,343 @@ export default function MedwayDashboard() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      fontFamily: 'Arial, sans-serif'
+      background: `
+        linear-gradient(135deg, rgba(15, 23, 42, 0.97) 0%, rgba(30, 41, 59, 0.95) 100%),
+        radial-gradient(circle at 25% 25%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
+        radial-gradient(circle at 75% 75%, rgba(168, 85, 247, 0.12) 0%, transparent 50%)
+      `,
+      fontFamily: `'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`,
+      position: 'relative',
+      minWidth: '320px'
     }}>
       <style>{`
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
-        .card {
-          background: rgba(255, 255, 255, 0.95);
-          border-radius: 20px;
-          padding: 24px;
-          box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-          margin-bottom: 20px;
-          transition: all 0.3s ease;
+        * { 
+          margin: 0; 
+          padding: 0; 
+          box-sizing: border-box; 
         }
         
-        .card:hover {
-          transform: translateY(-5px);
-          box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        .glass-card {
+          background: rgba(255, 255, 255, 0.08);
+          backdrop-filter: blur(20px);
+          border-radius: 24px;
+          padding: 32px;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          box-shadow: 
+            0 20px 40px -12px rgba(0, 0, 0, 0.25),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1),
+            0 0 0 1px rgba(255, 255, 255, 0.05);
+          margin-bottom: 24px;
+          transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+          position: relative;
+          overflow: hidden;
+        }
+        
+        .glass-card:before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 1px;
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        }
+        
+        .glass-card:hover {
+          transform: translateY(-4px);
+          box-shadow: 
+            0 32px 64px -12px rgba(0, 0, 0, 0.35),
+            inset 0 1px 0 rgba(255, 255, 255, 0.15),
+            0 0 0 1px rgba(255, 255, 255, 0.08);
         }
         
         .metric-card {
-          background: rgba(255, 255, 255, 0.95);
-          border-radius: 16px;
-          padding: 20px;
+          background: rgba(255, 255, 255, 0.06);
+          backdrop-filter: blur(16px);
+          border-radius: 20px;
+          padding: 28px;
           text-align: center;
-          box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-          transition: all 0.3s ease;
-          margin-bottom: 20px;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          box-shadow: 
+            0 8px 32px rgba(0, 0, 0, 0.18),
+            inset 0 1px 0 rgba(255, 255, 255, 0.08);
+          transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+          margin-bottom: 24px;
+          position: relative;
+          overflow: hidden;
+        }
+        
+        .metric-card:before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 1px;
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
         }
         
         .metric-card:hover {
-          transform: translateY(-3px);
-          box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+          transform: translateY(-2px) scale(1.02);
+          box-shadow: 
+            0 16px 48px rgba(0, 0, 0, 0.25),
+            inset 0 1px 0 rgba(255, 255, 255, 0.12);
+          border-color: rgba(255, 255, 255, 0.15);
         }
         
         .btn {
-          padding: 12px 20px;
-          border-radius: 12px;
+          padding: 14px 24px;
+          border-radius: 16px;
           border: none;
           cursor: pointer;
           font-weight: 600;
-          transition: all 0.3s ease;
-          margin: 5px;
           font-size: 14px;
+          transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+          margin: 6px;
+          position: relative;
+          overflow: hidden;
+          backdrop-filter: blur(8px);
+          font-family: inherit;
+          letter-spacing: 0.025em;
+        }
+        
+        .btn:before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+          transition: left 0.5s;
+        }
+        
+        .btn:hover:before {
+          left: 100%;
         }
         
         .btn-primary {
-          background: linear-gradient(45deg, #667eea, #764ba2);
+          background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
           color: white;
+          border: 1px solid rgba(99, 102, 241, 0.3);
+          box-shadow: 
+            0 4px 16px rgba(99, 102, 241, 0.3),
+            inset 0 1px 0 rgba(255, 255, 255, 0.2);
         }
         
         .btn-primary:hover {
-          background: linear-gradient(45deg, #5a6fd8, #6a4190);
+          background: linear-gradient(135deg, #5b5ff9 0%, #9333ea 100%);
           transform: translateY(-2px);
+          box-shadow: 
+            0 8px 24px rgba(99, 102, 241, 0.4),
+            inset 0 1px 0 rgba(255, 255, 255, 0.25);
         }
         
         .btn-success {
-          background: linear-gradient(45deg, #4ade80, #22c55e);
+          background: linear-gradient(135deg, #10b981 0%, #059669 100%);
           color: white;
+          border: 1px solid rgba(16, 185, 129, 0.3);
+          box-shadow: 
+            0 4px 16px rgba(16, 185, 129, 0.25),
+            inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        }
+        
+        .btn-success:hover {
+          background: linear-gradient(135deg, #059669 0%, #047857 100%);
+          transform: translateY(-2px);
+          box-shadow: 
+            0 8px 24px rgba(16, 185, 129, 0.35),
+            inset 0 1px 0 rgba(255, 255, 255, 0.25);
         }
         
         .btn-warning {
-          background: linear-gradient(45deg, #fbbf24, #f59e0b);
+          background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
           color: white;
+          border: 1px solid rgba(245, 158, 11, 0.3);
+          box-shadow: 
+            0 4px 16px rgba(245, 158, 11, 0.25),
+            inset 0 1px 0 rgba(255, 255, 255, 0.2);
         }
         
         .btn-secondary {
-          background: linear-gradient(45deg, #6b7280, #4b5563);
+          background: rgba(71, 85, 105, 0.6);
+          color: rgba(248, 250, 252, 0.9);
+          border: 1px solid rgba(71, 85, 105, 0.3);
+          box-shadow: 
+            0 4px 16px rgba(71, 85, 105, 0.2),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+        
+        .btn-secondary:hover {
+          background: rgba(71, 85, 105, 0.8);
+          transform: translateY(-2px);
           color: white;
         }
         
-        .status-normal { color: #22c55e; font-weight: bold; }
-        .status-atencao { color: #f59e0b; font-weight: bold; }
-        .status-urgente { color: #ef4444; font-weight: bold; }
+        .status-normal { 
+          color: #34d399; 
+          font-weight: 600;
+          text-shadow: 0 0 8px rgba(52, 211, 153, 0.3);
+        }
+        .status-atencao { 
+          color: #fbbf24; 
+          font-weight: 600;
+          text-shadow: 0 0 8px rgba(251, 191, 36, 0.3);
+        }
+        .status-urgente { 
+          color: #f87171; 
+          font-weight: 600;
+          text-shadow: 0 0 8px rgba(248, 113, 113, 0.3);
+        }
         
-        .progress-bar {
+        .elegant-progress {
           width: 100%;
-          height: 8px;
-          background: #e5e7eb;
-          border-radius: 4px;
+          height: 12px;
+          background: rgba(71, 85, 105, 0.3);
+          border-radius: 8px;
           overflow: hidden;
-          margin: 10px 0;
+          margin: 16px 0;
+          position: relative;
+          box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .elegant-progress:before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 1px;
+          background: rgba(255, 255, 255, 0.1);
         }
         
         .progress-fill {
           height: 100%;
-          transition: width 1s ease;
+          transition: width 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+          position: relative;
+          border-radius: 8px;
         }
         
-        .progress-normal { background: linear-gradient(90deg, #4ade80, #22c55e); }
-        .progress-atencao { background: linear-gradient(90deg, #fbbf24, #f59e0b); }
-        .progress-urgente { background: linear-gradient(90deg, #ef4444, #dc2626); }
+        .progress-fill:after {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 50%;
+          background: rgba(255, 255, 255, 0.2);
+          border-radius: 8px 8px 0 0;
+        }
         
-        table {
+        .progress-normal { 
+          background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+          box-shadow: 0 0 16px rgba(52, 211, 153, 0.3);
+        }
+        .progress-atencao { 
+          background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+          box-shadow: 0 0 16px rgba(251, 191, 36, 0.3);
+        }
+        .progress-urgente { 
+          background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
+          box-shadow: 0 0 16px rgba(248, 113, 113, 0.3);
+        }
+        
+        .elegant-table {
           width: 100%;
           border-collapse: collapse;
-          background: white;
-          border-radius: 12px;
+          background: rgba(255, 255, 255, 0.04);
+          border-radius: 16px;
           overflow: hidden;
+          backdrop-filter: blur(8px);
+          border: 1px solid rgba(255, 255, 255, 0.06);
         }
         
-        th {
-          background: linear-gradient(45deg, #667eea, #764ba2);
-          color: white;
-          padding: 12px;
+        .elegant-table th {
+          background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%);
+          color: rgba(248, 250, 252, 0.95);
+          padding: 20px 16px;
           font-weight: 600;
-          font-size: 12px;
+          font-size: 13px;
           text-transform: uppercase;
+          letter-spacing: 0.08em;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+          position: relative;
         }
         
-        td {
-          padding: 12px;
-          border-bottom: 1px solid #e5e7eb;
+        .elegant-table th:after {
+          content: '';
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          height: 1px;
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
         }
         
-        tr:hover {
-          background: #f9fafb;
+        .elegant-table td {
+          padding: 18px 16px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+          color: rgba(248, 250, 252, 0.85);
+          font-weight: 500;
+          transition: all 0.3s ease;
         }
         
-        .header {
-          background: rgba(255, 255, 255, 0.9);
-          backdrop-filter: blur(10px);
-          padding: 20px 0;
-          margin-bottom: 20px;
-          border-radius: 0 0 20px 20px;
+        .elegant-table tr:hover {
+          background: rgba(255, 255, 255, 0.06);
+          transform: scale(1.001);
+        }
+        
+        .elegant-table tr:hover td {
+          color: rgba(248, 250, 252, 0.95);
+        }
+        
+        .header-glass {
+          background: rgba(255, 255, 255, 0.08);
+          backdrop-filter: blur(24px);
+          padding: 24px 0;
+          margin-bottom: 32px;
+          border-radius: 0 0 32px 32px;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-top: none;
+          box-shadow: 
+            0 8px 32px rgba(0, 0, 0, 0.2),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1);
+          position: relative;
+        }
+        
+        .header-glass:before {
+          content: '';
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          height: 1px;
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
         }
         
         .container {
-          max-width: 1200px;
+          max-width: 1400px;
           margin: 0 auto;
-          padding: 0 20px;
+          padding: 0 24px;
         }
         
         .grid {
           display: grid;
-          gap: 20px;
+          gap: 24px;
         }
         
         .grid-cols-4 {
-          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
         }
         
         .grid-cols-3 {
-          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
         }
         
         .flex {
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 16px;
         }
         
         .flex-wrap {
@@ -532,111 +806,222 @@ export default function MedwayDashboard() {
           text-align: center;
         }
         
-        .input {
-          padding: 12px;
-          border: 2px solid #e5e7eb;
-          border-radius: 8px;
+        .elegant-input {
+          padding: 16px 20px;
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          background: rgba(255, 255, 255, 0.06);
+          backdrop-filter: blur(8px);
+          border-radius: 12px;
           font-size: 14px;
+          font-weight: 500;
           width: 100%;
-          margin-bottom: 10px;
+          margin-bottom: 16px;
+          color: rgba(248, 250, 252, 0.9);
+          font-family: inherit;
+          transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
         }
         
-        .input:focus {
+        .elegant-input::placeholder {
+          color: rgba(248, 250, 252, 0.5);
+        }
+        
+        .elegant-input:focus {
           outline: none;
-          border-color: #667eea;
+          border-color: rgba(99, 102, 241, 0.5);
+          background: rgba(255, 255, 255, 0.08);
+          box-shadow: 
+            0 0 0 3px rgba(99, 102, 241, 0.15),
+            0 8px 24px rgba(0, 0, 0, 0.15);
+          transform: translateY(-1px);
         }
         
         .success-alert {
-          padding: 20px;
-          border-radius: 12px;
-          margin-bottom: 20px;
-          background: linear-gradient(45deg, #22c55e, #16a34a);
-          color: white;
+          padding: 24px;
+          border-radius: 20px;
+          margin-bottom: 32px;
+          background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.15) 100%);
+          border: 1px solid rgba(16, 185, 129, 0.3);
+          backdrop-filter: blur(16px);
+          color: rgba(248, 250, 252, 0.95);
+          box-shadow: 
+            0 8px 32px rgba(16, 185, 129, 0.15),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1);
         }
         
         .metric-number {
-          font-size: 36px;
-          font-weight: bold;
-          margin: 10px 0;
+          font-size: 48px;
+          font-weight: 800;
+          margin: 16px 0;
+          line-height: 1;
+          letter-spacing: -0.025em;
         }
         
         .metric-label {
-          color: #6b7280;
+          color: rgba(248, 250, 252, 0.7);
           font-size: 14px;
-          margin-bottom: 5px;
+          font-weight: 500;
+          margin-bottom: 8px;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
         }
         
         .status-badge {
-          padding: 4px 12px;
-          border-radius: 20px;
+          padding: 8px 16px;
+          border-radius: 12px;
           font-size: 12px;
           font-weight: 600;
           color: white;
+          backdrop-filter: blur(8px);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          letter-spacing: 0.025em;
         }
         
-        .badge-normal { background: #22c55e; }
-        .badge-atencao { background: #f59e0b; }
-        .badge-urgente { background: #ef4444; }
+        .badge-normal { 
+          background: linear-gradient(135deg, rgba(52, 211, 153, 0.9) 0%, rgba(16, 185, 129, 0.9) 100%);
+          box-shadow: 0 4px 16px rgba(52, 211, 153, 0.25);
+        }
+        .badge-atencao { 
+          background: linear-gradient(135deg, rgba(251, 191, 36, 0.9) 0%, rgba(245, 158, 11, 0.9) 100%);
+          box-shadow: 0 4px 16px rgba(251, 191, 36, 0.25);
+        }
+        .badge-urgente { 
+          background: linear-gradient(135deg, rgba(248, 113, 113, 0.9) 0%, rgba(239, 68, 68, 0.9) 100%);
+          box-shadow: 0 4px 16px rgba(248, 113, 113, 0.25);
+        }
         
         @media (max-width: 768px) {
-          .container { padding: 0 10px; }
+          .container { padding: 0 16px; }
           .grid-cols-4 { grid-template-columns: 1fr; }
           .grid-cols-3 { grid-template-columns: 1fr; }
-          .flex { flex-direction: column; align-items: stretch; }
+          .flex { flex-direction: column; align-items: stretch; gap: 12px; }
+          .metric-card { padding: 20px; }
+          .glass-card { padding: 24px; }
+          .metric-number { font-size: 36px; }
+        }
+        
+        .logo-gradient {
+          background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+        
+        .text-gradient {
+          background: linear-gradient(135deg, rgba(248, 250, 252, 0.95) 0%, rgba(226, 232, 240, 0.9) 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
         }
       `}</style>
 
-      {/* Header Ultra Moderno */}
-      <div className="header">
+      {/* Header Ultra Premium */}
+      <div className="header-glass">
         <div className="container">
           <div className="flex justify-between">
             <div className="flex">
               <div style={{
-                width: '60px',
-                height: '60px',
-                background: 'linear-gradient(45deg, #667eea, #764ba2)',
-                borderRadius: '12px',
+                width: '72px',
+                height: '72px',
+                background: `
+                  linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%)
+                `,
+                borderRadius: '20px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '30px',
-                marginRight: '15px'
+                fontSize: '36px',
+                marginRight: '20px',
+                position: 'relative',
+                boxShadow: `
+                  0 8px 32px rgba(99, 102, 241, 0.3),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.2)
+                `
               }}>
+                <div style={{
+                  position: 'absolute',
+                  inset: '-3px',
+                  background: `
+                    linear-gradient(135deg, #6366f1, #8b5cf6, #ec4899)
+                  `,
+                  borderRadius: '23px',
+                  opacity: 0.3,
+                  filter: 'blur(8px)',
+                  animation: 'glow 2s ease-in-out infinite alternate'
+                }}></div>
                 🧠
               </div>
               <div>
                 <h1 style={{
-                  fontSize: '28px',
-                  fontWeight: 'bold',
-                  background: 'linear-gradient(45deg, #667eea, #764ba2)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  marginBottom: '5px'
-                }}>
+                  fontSize: '36px',
+                  fontWeight: '800',
+                  marginBottom: '8px',
+                  letterSpacing: '-0.025em'
+                }} className="logo-gradient">
                   MEDWAY Analytics
                 </h1>
-                <div style={{ fontSize: '14px', color: '#6b7280' }}>
-                  <span style={{ color: connectionStatus === 'connected' ? '#22c55e' : '#ef4444' }}>●</span>
-                  {' '}{data.length} registros • {lastUpdate.toLocaleTimeString('pt-BR')}
-                  {connectionStatus === 'connected' && <span style={{ color: '#22c55e' }}> • Dados Reais</span>}
-                  {error && <span style={{ color: '#f59e0b' }}> • Modo Demo</span>}
+                <div style={{ 
+                  fontSize: '14px', 
+                  color: 'rgba(248, 250, 252, 0.7)',
+                  fontWeight: '500',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      background: connectionStatus === 'connected' ? '#34d399' : '#f87171',
+                      boxShadow: `0 0 8px ${connectionStatus === 'connected' ? 'rgba(52, 211, 153, 0.5)' : 'rgba(248, 113, 113, 0.5)'}`,
+                      animation: connectionStatus === 'connected' ? 'pulse 2s infinite' : 'none'
+                    }}></div>
+                    <span style={{ color: connectionStatus === 'connected' ? '#34d399' : '#f87171' }}>
+                      {connectionStatus === 'connected' ? 'Conectado' : 'Erro de conexão'}
+                    </span>
+                  </div>
+                  <span>•</span>
+                  <span>{data.length} registros</span>
+                  <span>•</span>
+                  <span>{lastUpdate.toLocaleTimeString('pt-BR')}</span>
+                  {connectionStatus === 'connected' && (
+                    <>
+                      <span>•</span>
+                      <span style={{ 
+                        color: '#34d399',
+                        fontWeight: '600',
+                        textShadow: '0 0 8px rgba(52, 211, 153, 0.3)'
+                      }}>
+                        ✨ Dados Reais
+                      </span>
+                    </>
+                  )}
+                  {error && (
+                    <>
+                      <span>•</span>
+                      <span style={{ color: '#fbbf24' }}>🔧 Modo Demo</span>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
             
             <div className="flex flex-wrap">
-              {/* Seletor de Período */}
-              <div className="flex" style={{
-                background: 'white',
-                borderRadius: '12px',
-                padding: '4px',
-                boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
-                border: '1px solid #e5e7eb'
+              {/* Seletor de Período Premium */}
+              <div style={{
+                background: 'rgba(255, 255, 255, 0.08)',
+                backdropFilter: 'blur(16px)',
+                borderRadius: '16px',
+                padding: '6px',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+                display: 'flex',
+                gap: '4px'
               }}>
                 {[
                   { key: 'hoje', label: 'Hoje', icon: '📅' },
-                  { key: '7dias', label: '7d', icon: '📊' },
-                  { key: '30dias', label: '30d', icon: '📈' }
+                  { key: '7dias', label: '7 dias', icon: '📊' },
+                  { key: '30dias', label: '30 dias', icon: '📈' }
                 ].map(({ key, label, icon }) => (
                   <button
                     key={key}
@@ -644,39 +1029,64 @@ export default function MedwayDashboard() {
                       setActiveView(key);
                       setFilters({...filters, periodo: key});
                     }}
-                    className={`${activeView === key ? 'btn-primary' : 'btn-secondary'}`}
-                    style={{ margin: '2px' }}
+                    className={`btn ${activeView === key ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{ 
+                      margin: '0',
+                      padding: '12px 16px',
+                      borderRadius: '12px',
+                      fontSize: '13px'
+                    }}
                   >
-                    <span style={{ marginRight: '5px' }}>{icon}</span>
+                    <span style={{ marginRight: '6px', fontSize: '14px' }}>{icon}</span>
                     <span>{label}</span>
                   </button>
                 ))}
               </div>
 
-              {/* Controles */}
+              {/* Controles Premium */}
               <button
                 onClick={() => setRealTimeEnabled(!realTimeEnabled)}
                 className={`btn ${realTimeEnabled ? 'btn-success' : 'btn-secondary'}`}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
               >
-                <span className={`mr-2 ${realTimeEnabled ? 'animate-spin' : ''}`} style={{ marginRight: '8px' }}>🔄</span>
-                {realTimeEnabled ? 'LIVE' : 'PAUSADO'}
+                <div style={{
+                  fontSize: '16px',
+                  animation: realTimeEnabled ? 'spin 2s linear infinite' : 'none'
+                }}>🔄</div>
+                <span>{realTimeEnabled ? 'LIVE' : 'PAUSADO'}</span>
               </button>
 
               <button
                 onClick={() => setShowFilters(!showFilters)}
                 className="btn btn-primary"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
               >
-                <span style={{ marginRight: '8px' }}>🔍</span>
-                Filtros
+                <span style={{ fontSize: '16px' }}>🔍</span>
+                <span>Filtros</span>
               </button>
 
               <button
                 onClick={fetchData}
                 disabled={loading}
                 className="btn btn-primary"
-                style={{ opacity: loading ? 0.5 : 1 }}
+                style={{ 
+                  opacity: loading ? 0.6 : 1,
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
               >
-                Atualizar
+                <span style={{ fontSize: '16px' }}>⟳</span>
+                <span>Atualizar</span>
               </button>
             </div>
           </div>
@@ -684,35 +1094,75 @@ export default function MedwayDashboard() {
       </div>
 
       <div className="container">
-        {/* Status de Sucesso */}
+        {/* Status de Sucesso Premium */}
         {connectionStatus === 'connected' && !error && (
           <div className="success-alert">
             <div className="flex">
-              <span style={{ fontSize: '24px', marginRight: '10px' }}>✅</span>
+              <div style={{
+                width: '56px',
+                height: '56px',
+                background: 'linear-gradient(135deg, #34d399 0%, #10b981 100%)',
+                borderRadius: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '28px',
+                marginRight: '16px',
+                boxShadow: '0 8px 24px rgba(52, 211, 153, 0.3)'
+              }}>
+                ✅
+              </div>
               <div>
-                <strong>Conectado com Sucesso ao Banco de Dados!</strong>
-                <br />
-                <small>Exibindo {data.length} registros reais do Supabase • Atualização automática a cada 30 segundos</small>
+                <div style={{ 
+                  fontSize: '20px', 
+                  fontWeight: '700', 
+                  marginBottom: '6px',
+                  color: 'rgba(248, 250, 252, 0.95)'
+                }}>
+                  Conectado com Sucesso ao Banco de Dados!
+                </div>
+                <div style={{ 
+                  fontSize: '14px', 
+                  color: 'rgba(248, 250, 252, 0.8)',
+                  fontWeight: '500'
+                }}>
+                  Exibindo {data.length} registros reais do Supabase • Atualização automática a cada 30 segundos
+                </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* Painel de Filtros Avançados */}
+        {/* Painel de Filtros Avançados Premium */}
         {showFilters && (
-          <div className="card">
-            <div className="flex justify-between" style={{ marginBottom: '20px' }}>
-              <h2 style={{ fontSize: '20px', fontWeight: 'bold' }}>
-                <span style={{ fontSize: '24px', marginRight: '10px' }}>✨</span>
+          <div className="glass-card" style={{ animation: 'slideDown 0.4s ease-out' }}>
+            <div className="flex justify-between" style={{ marginBottom: '24px' }}>
+              <h2 style={{ 
+                fontSize: '24px', 
+                fontWeight: '700', 
+                color: 'rgba(248, 250, 252, 0.95)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px'
+              }}>
+                <span style={{ 
+                  fontSize: '28px',
+                  background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
+                  borderRadius: '12px',
+                  padding: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>✨</span>
                 Filtros Avançados
               </h2>
               <div className="flex">
                 <button onClick={exportData} className="btn btn-success">
-                  <span style={{ marginRight: '8px' }}>💾</span>
+                  <span style={{ marginRight: '8px', fontSize: '16px' }}>💾</span>
                   Exportar CSV
                 </button>
                 <button onClick={clearFilters} className="btn btn-secondary">
-                  <span style={{ marginRight: '8px' }}>🗑️</span>
+                  <span style={{ marginRight: '8px', fontSize: '16px' }}>🗑️</span>
                   Limpar
                 </button>
               </div>
@@ -726,7 +1176,7 @@ export default function MedwayDashboard() {
                   value={filters.busca}
                   onChange={(e) => setFilters({...filters, busca: e.target.value})}
                   placeholder="Buscar em todos os campos..."
-                  className="input"
+                  className="elegant-input"
                 />
               </div>
               
@@ -735,9 +1185,9 @@ export default function MedwayDashboard() {
                 <select
                   value={filters.terapeuta}
                   onChange={(e) => setFilters({...filters, terapeuta: e.target.value})}
-                  className="input"
+                  className="elegant-input"
                 >
-                  <option value="">Todos</option>
+                  <option value="">Todos os terapeutas</option>
                   {terapeutasUnicos.map((terapeuta: string) => (
                     <option key={terapeuta} value={terapeuta}>{terapeuta}</option>
                   ))}
@@ -749,9 +1199,9 @@ export default function MedwayDashboard() {
                 <select
                   value={filters.status}
                   onChange={(e) => setFilters({...filters, status: e.target.value})}
-                  className="input"
+                  className="elegant-input"
                 >
-                  <option value="">Todos</option>
+                  <option value="">Todos os status</option>
                   <option value="normal">🟢 Normal (0-29)</option>
                   <option value="atencao">🟡 Atenção (30-49)</option>
                   <option value="urgente">🔴 Urgente (50+)</option>
@@ -759,126 +1209,260 @@ export default function MedwayDashboard() {
               </div>
             </div>
 
-            <div style={{ marginTop: '20px' }} className="flex justify-between">
-              <div style={{ fontSize: '14px', color: '#6b7280' }}>
-                <strong>{dadosFiltrados.length}</strong> registros encontrados
+            <div style={{ 
+              marginTop: '24px',
+              padding: '20px',
+              background: 'rgba(99, 102, 241, 0.1)',
+              borderRadius: '16px',
+              border: '1px solid rgba(99, 102, 241, 0.2)'
+            }} className="flex justify-between">
+              <div style={{ 
+                fontSize: '16px', 
+                color: 'rgba(248, 250, 252, 0.9)',
+                fontWeight: '600'
+              }}>
+                <span style={{ color: '#6366f1' }}>{dadosFiltrados.length}</span> registros encontrados
                 {filters.periodo === 'hoje' && ` de ${metricas.totalHoje} hoje`}
               </div>
-              <div className="flex" style={{ fontSize: '12px', color: '#9ca3af', gap: '15px' }}>
-                <span>🟢 {metricas.casosNormaisHoje} Normais</span>
-                <span>🟡 {metricas.casosAtencaoHoje} Atenção</span>
-                <span>🔴 {metricas.casosUrgentesHoje} Urgentes</span>
+              <div className="flex" style={{ 
+                fontSize: '14px', 
+                color: 'rgba(248, 250, 252, 0.8)', 
+                gap: '20px',
+                fontWeight: '500'
+              }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div style={{
+                    width: '8px', 
+                    height: '8px', 
+                    background: '#34d399', 
+                    borderRadius: '50%'
+                  }}></div>
+                  {metricas.casosNormaisHoje} Normais
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div style={{
+                    width: '8px', 
+                    height: '8px', 
+                    background: '#fbbf24', 
+                    borderRadius: '50%'
+                  }}></div>
+                  {metricas.casosAtencaoHoje} Atenção
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div style={{
+                    width: '8px', 
+                    height: '8px', 
+                    background: '#f87171', 
+                    borderRadius: '50%'
+                  }}></div>
+                  {metricas.casosUrgentesHoje} Urgentes
+                </span>
               </div>
             </div>
           </div>
         )}
 
-        {/* Cards de Métricas Ultra Modernos */}
+        {/* Cards de Métricas Ultra Premium */}
         <div className="grid grid-cols-4">
           <div className="metric-card">
-            <div className="metric-label">Consultas {activeView === 'hoje' ? 'Hoje' : activeView === '7dias' ? 'Últimos 7 dias' : 'Últimos 30 dias'}</div>
-            <div className="metric-number" style={{ color: '#667eea' }}>{metricas.totalHoje}</div>
-            <div className={crescimentoHoje >= 0 ? 'status-normal' : 'status-urgente'}>
-              <span style={{ marginRight: '5px' }}>{crescimentoHoje >= 0 ? '📈' : '📉'}</span>
-              {Math.abs(crescimentoHoje).toFixed(1)}% vs ontem
+            <div className="metric-label">
+              Consultas {activeView === 'hoje' ? 'Hoje' : activeView === '7dias' ? 'Últimos 7 dias' : 'Últimos 30 dias'}
+            </div>
+            <div className="metric-number" style={{ 
+              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              textShadow: '0 0 32px rgba(99, 102, 241, 0.3)'
+            }}>
+              {metricas.totalHoje}
+            </div>
+            <div className={crescimentoHoje >= 0 ? 'status-normal' : 'status-urgente'} style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              fontSize: '14px',
+              fontWeight: '600'
+            }}>
+              <span style={{ fontSize: '16px' }}>{crescimentoHoje >= 0 ? '📈' : '📉'}</span>
+              <span>{Math.abs(crescimentoHoje).toFixed(1)}% vs ontem</span>
             </div>
           </div>
 
           <div className="metric-card">
             <div className="metric-label">Terapeutas Ativos</div>
-            <div className="metric-number" style={{ color: '#22c55e' }}>{metricas.terapeutasHoje}</div>
-            <div className="metric-label">de {terapeutasUnicos.length} total</div>
+            <div className="metric-number" style={{ 
+              background: 'linear-gradient(135deg, #34d399 0%, #10b981 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              textShadow: '0 0 32px rgba(52, 211, 153, 0.3)'
+            }}>
+              {metricas.terapeutasHoje}
+            </div>
+            <div className="metric-label" style={{ color: 'rgba(248, 250, 252, 0.6)' }}>
+              de {terapeutasUnicos.length} total
+            </div>
           </div>
 
           <div className="metric-card">
             <div className="metric-label">Alunos Atendidos</div>
-            <div className="metric-number" style={{ color: '#764ba2' }}>{metricas.alunosHoje}</div>
-            <div className="metric-label">únicos no período</div>
+            <div className="metric-number" style={{ 
+              background: 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              textShadow: '0 0 32px rgba(139, 92, 246, 0.3)'
+            }}>
+              {metricas.alunosHoje}
+            </div>
+            <div className="metric-label" style={{ color: 'rgba(248, 250, 252, 0.6)' }}>
+              únicos no período
+            </div>
           </div>
 
           <div className="metric-card">
-            <div className="metric-label">Média Pontuação</div>
-            <div className="metric-number" style={{ color: '#f59e0b' }}>{metricas.mediaPontuacaoHoje.toFixed(1)}</div>
+            <div className="metric-label">Pontuação Média</div>
+            <div className="metric-number" style={{ 
+              background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              textShadow: '0 0 32px rgba(251, 191, 36, 0.3)'
+            }}>
+              {metricas.mediaPontuacaoHoje.toFixed(1)}
+            </div>
             <div className={
               metricas.mediaPontuacaoHoje >= 50 ? 'status-urgente' :
               metricas.mediaPontuacaoHoje >= 30 ? 'status-atencao' : 'status-normal'
-            }>
+            } style={{
+              fontSize: '14px',
+              fontWeight: '600'
+            }}>
               {metricas.mediaPontuacaoHoje >= 50 ? 'Alto risco' :
                metricas.mediaPontuacaoHoje >= 30 ? 'Atenção' : 'Normal'}
             </div>
           </div>
         </div>
 
-        {/* Alertas de Emergência ULTRA */}
+        {/* Alertas de Emergência Ultra Premium */}
         {metricas.casosUrgentesHoje > 0 && (
           <div style={{
-            background: 'linear-gradient(45deg, #ef4444, #dc2626)',
-            color: 'white',
-            padding: '20px',
-            borderRadius: '16px',
-            marginBottom: '20px',
+            background: `
+              linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(220, 38, 38, 0.15) 100%)
+            `,
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            color: 'rgba(248, 250, 252, 0.95)',
+            padding: '32px',
+            borderRadius: '24px',
+            marginBottom: '32px',
             position: 'relative',
-            overflow: 'hidden'
+            overflow: 'hidden',
+            boxShadow: '0 8px 32px rgba(239, 68, 68, 0.2)'
           }}>
             <div style={{
               position: 'absolute',
               inset: 0,
-              background: 'linear-gradient(45deg, rgba(239, 68, 68, 0.2), rgba(220, 38, 38, 0.2))',
+              background: 'linear-gradient(45deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.1))',
               animation: 'pulse 2s ease-in-out infinite'
             }}></div>
-            <div className="flex" style={{ position: 'relative' }}>
+            
+            <div className="flex" style={{ position: 'relative', alignItems: 'flex-start' }}>
               <div style={{
-                width: '64px',
-                height: '64px',
-                background: 'rgba(255, 255, 255, 0.2)',
-                borderRadius: '16px',
+                width: '80px',
+                height: '80px',
+                background: 'rgba(239, 68, 68, 0.2)',
+                borderRadius: '20px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                marginRight: '15px'
+                marginRight: '20px',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                backdropFilter: 'blur(8px)'
               }}>
-                <span style={{ fontSize: '40px', animation: 'bounce 1s ease-in-out infinite' }}>🚨</span>
+                <span style={{ 
+                  fontSize: '48px', 
+                  animation: 'bounce 1s ease-in-out infinite'
+                }}>🚨</span>
               </div>
               <div>
-                <h3 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '5px' }}>
+                <h3 style={{ 
+                  fontSize: '28px', 
+                  fontWeight: '800', 
+                  marginBottom: '8px',
+                  color: '#f87171',
+                  textShadow: '0 0 16px rgba(248, 113, 113, 0.3)'
+                }}>
                   ALERTA CRÍTICO: {metricas.casosUrgentesHoje} Casos Urgentes
                 </h3>
-                <p style={{ color: 'rgba(255, 255, 255, 0.9)' }}>
+                <p style={{ 
+                  color: 'rgba(248, 250, 252, 0.8)', 
+                  fontSize: '16px',
+                  fontWeight: '500',
+                  marginBottom: '16px'
+                }}>
                   Pontuação ≥ 50 - Intervenção imediata necessária
                 </p>
-                <div className="flex" style={{ marginTop: '10px', gap: '20px', fontSize: '14px' }}>
-                  <span>⏰ Identificados no período atual</span>
-                  <span>📋 Requer supervisão</span>
+                <div className="flex" style={{ 
+                  gap: '24px', 
+                  fontSize: '14px',
+                  fontWeight: '500'
+                }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '16px' }}>⏰</span>
+                    <span>Identificados no período atual</span>
+                  </span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '16px' }}>📋</span>
+                    <span>Requer supervisão médica</span>
+                  </span>
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* Distribuição Visual com Animações */}
+        {/* Distribuição Visual Ultra Premium */}
         <div className="grid grid-cols-3">
           <div className="metric-card">
-            <div className="flex justify-between" style={{ marginBottom: '15px' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: '600' }}>Casos Normais</h3>
+            <div className="flex justify-between" style={{ marginBottom: '20px', alignItems: 'flex-start' }}>
+              <h3 style={{ 
+                fontSize: '20px', 
+                fontWeight: '700',
+                color: 'rgba(248, 250, 252, 0.95)'
+              }}>
+                Casos Normais
+              </h3>
               <div style={{
-                width: '48px',
-                height: '48px',
-                background: '#dcfce7',
-                borderRadius: '16px',
+                width: '60px',
+                height: '60px',
+                background: 'rgba(52, 211, 153, 0.15)',
+                borderRadius: '18px',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center'
+                justifyContent: 'center',
+                border: '1px solid rgba(52, 211, 153, 0.3)',
+                backdropFilter: 'blur(8px)'
               }}>
-                <span style={{ fontSize: '24px' }}>🟢</span>
+                <span style={{ fontSize: '28px' }}>🟢</span>
               </div>
             </div>
             <div className="text-center">
-              <div className="metric-number" style={{ color: '#22c55e' }}>{metricas.casosNormaisHoje}</div>
-              <div className="metric-label" style={{ marginBottom: '15px' }}>Pontuação 0-29</div>
-              <div className="progress-bar">
+              <div className="metric-number" style={{ 
+                background: 'linear-gradient(135deg, #34d399 0%, #10b981 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                textShadow: '0 0 24px rgba(52, 211, 153, 0.3)'
+              }}>
+                {metricas.casosNormaisHoje}
+              </div>
+              <div className="metric-label" style={{ marginBottom: '20px' }}>
+                Pontuação 0-29
+              </div>
+              <div className="elegant-progress">
                 <div 
                   className="progress-fill progress-normal"
-                  style={{ width: `${dadosHoje.length > 0 ? (metricas.casosNormaisHoje / dadosHoje.length) * 100 : 0}%` }}
+                  style={{ 
+                    width: `${dadosHoje.length > 0 ? (metricas.casosNormaisHoje / dadosHoje.length) * 100 : 0}%` 
+                  }}
                 ></div>
               </div>
               <div className="metric-label">
@@ -888,27 +1472,46 @@ export default function MedwayDashboard() {
           </div>
 
           <div className="metric-card">
-            <div className="flex justify-between" style={{ marginBottom: '15px' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: '600' }}>Casos Atenção</h3>
+            <div className="flex justify-between" style={{ marginBottom: '20px', alignItems: 'flex-start' }}>
+              <h3 style={{ 
+                fontSize: '20px', 
+                fontWeight: '700',
+                color: 'rgba(248, 250, 252, 0.95)'
+              }}>
+                Casos Atenção
+              </h3>
               <div style={{
-                width: '48px',
-                height: '48px',
-                background: '#fef3c7',
-                borderRadius: '16px',
+                width: '60px',
+                height: '60px',
+                background: 'rgba(251, 191, 36, 0.15)',
+                borderRadius: '18px',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center'
+                justifyContent: 'center',
+                border: '1px solid rgba(251, 191, 36, 0.3)',
+                backdropFilter: 'blur(8px)'
               }}>
-                <span style={{ fontSize: '24px' }}>🟡</span>
+                <span style={{ fontSize: '28px' }}>🟡</span>
               </div>
             </div>
             <div className="text-center">
-              <div className="metric-number" style={{ color: '#f59e0b' }}>{metricas.casosAtencaoHoje}</div>
-              <div className="metric-label" style={{ marginBottom: '15px' }}>Pontuação 30-49</div>
-              <div className="progress-bar">
+              <div className="metric-number" style={{ 
+                background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                textShadow: '0 0 24px rgba(251, 191, 36, 0.3)'
+              }}>
+                {metricas.casosAtencaoHoje}
+              </div>
+              <div className="metric-label" style={{ marginBottom: '20px' }}>
+                Pontuação 30-49
+              </div>
+              <div className="elegant-progress">
                 <div 
                   className="progress-fill progress-atencao"
-                  style={{ width: `${dadosHoje.length > 0 ? (metricas.casosAtencaoHoje / dadosHoje.length) * 100 : 0}%` }}
+                  style={{ 
+                    width: `${dadosHoje.length > 0 ? (metricas.casosAtencaoHoje / dadosHoje.length) * 100 : 0}%` 
+                  }}
                 ></div>
               </div>
               <div className="metric-label">
@@ -918,27 +1521,46 @@ export default function MedwayDashboard() {
           </div>
 
           <div className="metric-card">
-            <div className="flex justify-between" style={{ marginBottom: '15px' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: '600' }}>Casos Urgentes</h3>
+            <div className="flex justify-between" style={{ marginBottom: '20px', alignItems: 'flex-start' }}>
+              <h3 style={{ 
+                fontSize: '20px', 
+                fontWeight: '700',
+                color: 'rgba(248, 250, 252, 0.95)'
+              }}>
+                Casos Urgentes
+              </h3>
               <div style={{
-                width: '48px',
-                height: '48px',
-                background: '#fee2e2',
-                borderRadius: '16px',
+                width: '60px',
+                height: '60px',
+                background: 'rgba(248, 113, 113, 0.15)',
+                borderRadius: '18px',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center'
+                justifyContent: 'center',
+                border: '1px solid rgba(248, 113, 113, 0.3)',
+                backdropFilter: 'blur(8px)'
               }}>
-                <span style={{ fontSize: '24px' }}>🔴</span>
+                <span style={{ fontSize: '28px' }}>🔴</span>
               </div>
             </div>
             <div className="text-center">
-              <div className="metric-number" style={{ color: '#ef4444' }}>{metricas.casosUrgentesHoje}</div>
-              <div className="metric-label" style={{ marginBottom: '15px' }}>Pontuação ≥ 50</div>
-              <div className="progress-bar">
+              <div className="metric-number" style={{ 
+                background: 'linear-gradient(135deg, #f87171 0%, #ef4444 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                textShadow: '0 0 24px rgba(248, 113, 113, 0.3)'
+              }}>
+                {metricas.casosUrgentesHoje}
+              </div>
+              <div className="metric-label" style={{ marginBottom: '20px' }}>
+                Pontuação ≥ 50
+              </div>
+              <div className="elegant-progress">
                 <div 
                   className="progress-fill progress-urgente"
-                  style={{ width: `${dadosHoje.length > 0 ? (metricas.casosUrgentesHoje / dadosHoje.length) * 100 : 0}%` }}
+                  style={{ 
+                    width: `${dadosHoje.length > 0 ? (metricas.casosUrgentesHoje / dadosHoje.length) * 100 : 0}%` 
+                  }}
                 ></div>
               </div>
               <div className="metric-label">
@@ -948,86 +1570,221 @@ export default function MedwayDashboard() {
           </div>
         </div>
 
-        {/* Gráfico de Atividade por Hora */}
-        <div className="card">
-          <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '20px' }} className="flex">
-            <span style={{ fontSize: '24px', marginRight: '10px' }}>📊</span>
+        {/* Gráfico de Atividade Ultra Premium */}
+        <div className="glass-card">
+          <h3 style={{ 
+            fontSize: '24px', 
+            fontWeight: '700', 
+            marginBottom: '24px',
+            color: 'rgba(248, 250, 252, 0.95)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px'
+          }}>
+            <span style={{
+              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+              borderRadius: '12px',
+              padding: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '24px'
+            }}>📊</span>
             Atividade por Hora - {activeView === 'hoje' ? 'Hoje' : activeView === '7dias' ? 'Últimos 7 dias' : 'Últimos 30 dias'}
           </h3>
+          
           <div style={{ 
             display: 'grid', 
             gridTemplateColumns: 'repeat(24, 1fr)', 
-            gap: '8px',
-            marginBottom: '20px'
+            gap: '6px',
+            marginBottom: '24px',
+            padding: '20px',
+            background: 'rgba(255, 255, 255, 0.04)',
+            borderRadius: '16px',
+            border: '1px solid rgba(255, 255, 255, 0.06)'
           }}>
-            {dadosPorHora.map((item, index) => (
-              <div key={index} style={{ textAlign: 'center' }}>
-                <div 
-                  style={{
-                    background: 'linear-gradient(to top, #667eea, #764ba2)',
-                    borderRadius: '8px',
-                    marginBottom: '8px',
-                    transition: 'all 0.3s ease',
-                    cursor: 'pointer',
-                    height: `${Math.max(item.consultas * 8, 4)}px`,
-                    minHeight: '4px'
-                  }}
-                  title={`${item.hora}: ${item.consultas} consultas`}
-                  onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
-                  onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                ></div>
-                <div style={{ fontSize: '10px', color: '#9ca3af' }}>{item.hora.split(':')[0]}</div>
-              </div>
-            ))}
+            {dadosPorHora.map((item, index) => {
+              const altura = Math.max(item.consultas * 10, 8);
+              const isAtivo = item.consultas > 0;
+              
+              return (
+                <div key={index} style={{ 
+                  textAlign: 'center',
+                  position: 'relative'
+                }}>
+                  <div 
+                    style={{
+                      background: isAtivo ? 
+                        `linear-gradient(to top, #6366f1 0%, #8b5cf6 50%, #ec4899 100%)` :
+                        'rgba(71, 85, 105, 0.3)',
+                      borderRadius: '8px',
+                      marginBottom: '12px',
+                      transition: 'all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+                      cursor: 'pointer',
+                      height: `${altura}px`,
+                      minHeight: '8px',
+                      boxShadow: isAtivo ? 
+                        '0 4px 16px rgba(99, 102, 241, 0.3)' :
+                        '0 2px 8px rgba(71, 85, 105, 0.2)',
+                      position: 'relative'
+                    }}
+                    title={`${item.hora}: ${item.consultas} consultas`}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'scale(1.1) translateY(-2px)';
+                      e.currentTarget.style.boxShadow = isAtivo ? 
+                        '0 8px 24px rgba(99, 102, 241, 0.4)' :
+                        '0 4px 16px rgba(71, 85, 105, 0.3)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'scale(1) translateY(0)';
+                      e.currentTarget.style.boxShadow = isAtivo ? 
+                        '0 4px 16px rgba(99, 102, 241, 0.3)' :
+                        '0 2px 8px rgba(71, 85, 105, 0.2)';
+                    }}
+                  >
+                    {/* Highlight overlay */}
+                    {isAtivo && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '0',
+                        left: '0',
+                        right: '0',
+                        height: '40%',
+                        background: 'rgba(255, 255, 255, 0.2)',
+                        borderRadius: '8px 8px 0 0'
+                      }}></div>
+                    )}
+                  </div>
+                  <div style={{ 
+                    fontSize: '11px', 
+                    color: isAtivo ? 'rgba(248, 250, 252, 0.8)' : 'rgba(248, 250, 252, 0.5)',
+                    fontWeight: isAtivo ? '600' : '400'
+                  }}>
+                    {item.hora.split(':')[0]}
+                  </div>
+                </div>
+              );
+            })}
           </div>
-          <div className="text-center">
-            <p style={{ fontSize: '14px', color: '#6b7280' }}>
-              Pico: <strong>{Math.max(...dadosPorHora.map(h => h.consultas))}</strong> consultas
-              • Total: <strong>{dadosPorHora.reduce((acc, h) => acc + h.consultas, 0)}</strong> consultas no período
+          
+          <div style={{
+            textAlign: 'center',
+            padding: '20px',
+            background: 'rgba(99, 102, 241, 0.1)',
+            borderRadius: '16px',
+            border: '1px solid rgba(99, 102, 241, 0.2)'
+          }}>
+            <p style={{ 
+              fontSize: '16px', 
+              color: 'rgba(248, 250, 252, 0.9)',
+              fontWeight: '500',
+              margin: 0
+            }}>
+              Pico: <span style={{ 
+                color: '#6366f1', 
+                fontWeight: '700',
+                textShadow: '0 0 8px rgba(99, 102, 241, 0.3)'
+              }}>
+                {Math.max(...dadosPorHora.map(h => h.consultas))}
+              </span> consultas
+              {' • '}
+              Total: <span style={{ 
+                color: '#8b5cf6', 
+                fontWeight: '700',
+                textShadow: '0 0 8px rgba(139, 92, 246, 0.3)'
+              }}>
+                {dadosPorHora.reduce((acc, h) => acc + h.consultas, 0)}
+              </span> consultas no período
             </p>
           </div>
         </div>
 
-        {/* Tabela Ultra Moderna */}
-        <div className="card">
+        {/* Tabela Ultra Premium */}
+        <div className="glass-card">
           <div style={{
-            padding: '20px',
-            background: 'linear-gradient(45deg, #667eea, #764ba2)',
-            color: 'white',
-            borderRadius: '12px 12px 0 0',
-            marginBottom: '0'
+            padding: '24px',
+            background: `
+              linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%)
+            `,
+            borderRadius: '16px 16px 0 0',
+            marginBottom: '0',
+            border: '1px solid rgba(99, 102, 241, 0.2)',
+            position: 'relative'
           }}>
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: '1px',
+              background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent)'
+            }}></div>
+            
             <div className="flex justify-between">
               <div>
-                <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '5px' }} className="flex">
-                  <span style={{ fontSize: '24px', marginRight: '10px' }}>📋</span>
+                <h3 style={{ 
+                  fontSize: '24px', 
+                  fontWeight: '700', 
+                  marginBottom: '8px',
+                  color: 'rgba(248, 250, 252, 0.95)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px'
+                }}>
+                  <span style={{ fontSize: '28px' }}>📋</span>
                   Registros Detalhados ({dadosFiltrados.length})
                 </h3>
-                <p style={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: '14px' }}>
+                <p style={{ 
+                  color: 'rgba(248, 250, 252, 0.8)', 
+                  fontSize: '16px',
+                  fontWeight: '500',
+                  margin: 0
+                }}>
                   Monitoramento em tempo real dos atendimentos • Dados do Supabase
                 </p>
               </div>
-              <div style={{ fontSize: '12px' }}>
-                <div className="flex" style={{ gap: '15px' }}>
-                  <div className="flex">
-                    <div style={{ width: '12px', height: '12px', background: '#4ade80', borderRadius: '50%', marginRight: '8px' }}></div>
-                    <span>Normal</span>
-                  </div>
-                  <div className="flex">
-                    <div style={{ width: '12px', height: '12px', background: '#fbbf24', borderRadius: '50%', marginRight: '8px' }}></div>
-                    <span>Atenção</span>
-                  </div>
-                  <div className="flex">
-                    <div style={{ width: '12px', height: '12px', background: '#ef4444', borderRadius: '50%', marginRight: '8px' }}></div>
-                    <span>Urgente</span>
-                  </div>
+              <div style={{
+                display: 'flex',
+                gap: '20px',
+                fontSize: '13px',
+                fontWeight: '500'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ 
+                    width: '12px', 
+                    height: '12px', 
+                    background: 'linear-gradient(135deg, #34d399, #10b981)', 
+                    borderRadius: '50%',
+                    boxShadow: '0 0 8px rgba(52, 211, 153, 0.3)'
+                  }}></div>
+                  <span style={{ color: 'rgba(248, 250, 252, 0.9)' }}>Normal</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ 
+                    width: '12px', 
+                    height: '12px', 
+                    background: 'linear-gradient(135deg, #fbbf24, #f59e0b)', 
+                    borderRadius: '50%',
+                    boxShadow: '0 0 8px rgba(251, 191, 36, 0.3)'
+                  }}></div>
+                  <span style={{ color: 'rgba(248, 250, 252, 0.9)' }}>Atenção</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ 
+                    width: '12px', 
+                    height: '12px', 
+                    background: 'linear-gradient(135deg, #f87171, #ef4444)', 
+                    borderRadius: '50%',
+                    boxShadow: '0 0 8px rgba(248, 113, 113, 0.3)'
+                  }}></div>
+                  <span style={{ color: 'rgba(248, 250, 252, 0.9)' }}>Urgente</span>
                 </div>
               </div>
             </div>
           </div>
           
           <div style={{ overflowX: 'auto' }}>
-            <table>
+            <table className="elegant-table">
               <thead>
                 <tr>
                   <th>Data/Hora</th>
@@ -1043,73 +1800,118 @@ export default function MedwayDashboard() {
                   const pontuacao = Number(item.pontuacao) || 0;
                   const status = pontuacao >= 50 ? 'urgente' : pontuacao >= 30 ? 'atencao' : 'normal';
                   const statusConfig = {
-                    urgente: { emoji: '🔴', text: 'Urgente', bg: '#fee2e2', textColor: '#991b1b', borderColor: '#ef4444' },
-                    atencao: { emoji: '🟡', text: 'Atenção', bg: '#fef3c7', textColor: '#92400e', borderColor: '#f59e0b' },
-                    normal: { emoji: '🟢', text: 'Normal', bg: '#dcfce7', textColor: '#166534', borderColor: '#22c55e' }
+                    urgente: { 
+                      emoji: '🔴', 
+                      text: 'Urgente', 
+                      bg: 'rgba(248, 113, 113, 0.15)', 
+                      borderColor: '#f87171',
+                      badgeClass: 'badge-urgente'
+                    },
+                    atencao: { 
+                      emoji: '🟡', 
+                      text: 'Atenção', 
+                      bg: 'rgba(251, 191, 36, 0.15)', 
+                      borderColor: '#fbbf24',
+                      badgeClass: 'badge-atencao'
+                    },
+                    normal: { 
+                      emoji: '🟢', 
+                      text: 'Normal', 
+                      bg: 'rgba(52, 211, 153, 0.15)', 
+                      borderColor: '#34d399',
+                      badgeClass: 'badge-normal'
+                    }
                   };
                   
                   return (
                     <tr 
                       key={item.id || index}
                       style={{
-                        borderLeft: `4px solid ${statusConfig[status].borderColor}`,
-                        transition: 'all 0.2s ease'
+                        borderLeft: `3px solid ${statusConfig[status].borderColor}`,
+                        transition: 'all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
                       }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = statusConfig[status].bg}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = statusConfig[status].bg;
+                        e.currentTarget.style.transform = 'scale(1.002)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                        e.currentTarget.style.transform = 'scale(1)';
+                      }}
                     >
                       <td>
-                        <div style={{ fontSize: '14px', fontWeight: '600' }}>
+                        <div style={{ 
+                          fontSize: '14px', 
+                          fontWeight: '600',
+                          color: 'rgba(248, 250, 252, 0.9)',
+                          marginBottom: '2px'
+                        }}>
                           {new Date(item.created_at).toLocaleDateString('pt-BR')}
                         </div>
-                        <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                        <div style={{ 
+                          fontSize: '12px', 
+                          color: 'rgba(248, 250, 252, 0.6)',
+                          fontWeight: '500'
+                        }}>
                           {new Date(item.created_at).toLocaleTimeString('pt-BR')}
                         </div>
                       </td>
-                      <td style={{ fontWeight: '600' }}>{item.nome_aluno || 'N/A'}</td>
-                      <td>{item.terapeuta || 'N/A'}</td>
+                      <td style={{ 
+                        fontWeight: '600',
+                        color: 'rgba(248, 250, 252, 0.9)'
+                      }}>
+                        {item.nome_aluno || 'N/A'}
+                      </td>
+                      <td style={{ 
+                        color: 'rgba(248, 250, 252, 0.85)'
+                      }}>
+                        {item.terapeuta || 'N/A'}
+                      </td>
                       <td>
-                        <div className="flex" style={{ alignItems: 'center' }}>
+                        <div style={{ 
+                          display: 'flex', 
+                          alignItems: 'center',
+                          gap: '12px'
+                        }}>
                           <span style={{ 
                             fontSize: '16px', 
-                            fontWeight: 'bold', 
+                            fontWeight: '700', 
                             color: statusConfig[status].borderColor,
-                            marginRight: '8px'
+                            textShadow: `0 0 8px ${statusConfig[status].borderColor}30`
                           }}>
                             {pontuacao.toFixed(1)}
                           </span>
                           <div style={{ 
                             width: '60px', 
-                            height: '6px', 
-                            background: '#e5e7eb', 
-                            borderRadius: '3px',
-                            overflow: 'hidden'
+                            height: '8px', 
+                            background: 'rgba(71, 85, 105, 0.3)', 
+                            borderRadius: '4px',
+                            overflow: 'hidden',
+                            position: 'relative'
                           }}>
                             <div 
                               style={{
                                 height: '100%',
-                                background: statusConfig[status].borderColor,
+                                background: `linear-gradient(135deg, ${statusConfig[status].borderColor}, ${statusConfig[status].borderColor}dd)`,
                                 width: `${Math.min(pontuacao, 100)}%`,
-                                transition: 'width 0.5s ease'
+                                transition: 'width 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+                                borderRadius: '4px',
+                                boxShadow: `0 0 8px ${statusConfig[status].borderColor}40`
                               }}
                             ></div>
                           </div>
                         </div>
                       </td>
                       <td>
-                        <span style={{
-                          padding: '6px 12px',
-                          borderRadius: '20px',
-                          fontSize: '12px',
-                          fontWeight: '600',
-                          background: statusConfig[status].bg,
-                          color: statusConfig[status].textColor,
-                          border: `1px solid ${statusConfig[status].borderColor}`
-                        }}>
+                        <span className={`status-badge ${statusConfig[status].badgeClass}`}>
                           {statusConfig[status].emoji} {statusConfig[status].text}
                         </span>
                       </td>
-                      <td style={{ maxWidth: '200px', fontSize: '12px' }}>
+                      <td style={{ 
+                        maxWidth: '200px', 
+                        fontSize: '13px',
+                        color: 'rgba(248, 250, 252, 0.75)'
+                      }}>
                         <div style={{ 
                           overflow: 'hidden', 
                           textOverflow: 'ellipsis', 
@@ -1127,61 +1929,188 @@ export default function MedwayDashboard() {
           </div>
           
           {dadosFiltrados.length === 0 && (
-            <div className="text-center" style={{ padding: '60px 20px' }}>
-              <div style={{ fontSize: '64px', marginBottom: '20px' }}>🔍</div>
-              <div style={{ color: '#6b7280', fontSize: '18px', fontWeight: '500' }}>
-                Nenhum registro encontrado com os filtros aplicados.
+            <div style={{ 
+              textAlign: 'center', 
+              padding: '80px 20px',
+              background: 'rgba(255, 255, 255, 0.02)',
+              borderRadius: '0 0 16px 16px'
+            }}>
+              <div style={{ 
+                fontSize: '80px', 
+                marginBottom: '24px',
+                opacity: 0.6
+              }}>
+                🔍
               </div>
-              <div style={{ color: '#9ca3af', fontSize: '14px', marginTop: '10px' }}>
+              <div style={{ 
+                color: 'rgba(248, 250, 252, 0.8)', 
+                fontSize: '20px', 
+                fontWeight: '600',
+                marginBottom: '8px'
+              }}>
+                Nenhum registro encontrado
+              </div>
+              <div style={{ 
+                color: 'rgba(248, 250, 252, 0.5)', 
+                fontSize: '14px'
+              }}>
                 Ajuste os filtros para ver mais resultados.
               </div>
             </div>
           )}
         </div>
 
-        {/* Rodapé Ultra */}
-        <div className="text-center" style={{ margin: '60px 0 40px' }}>
+        {/* Rodapé Ultra Premium */}
+        <div style={{ 
+          textAlign: 'center', 
+          margin: '80px 0 60px',
+          animation: 'fadeIn 1s ease-out'
+        }}>
           <div style={{
             display: 'inline-flex',
             alignItems: 'center',
-            gap: '20px',
-            background: 'rgba(255, 255, 255, 0.95)',
-            borderRadius: '20px',
-            padding: '30px',
-            boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
-            border: '1px solid rgba(255, 255, 255, 0.2)'
+            gap: '24px',
+            background: 'rgba(255, 255, 255, 0.08)',
+            backdropFilter: 'blur(20px)',
+            borderRadius: '28px',
+            padding: '32px 40px',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            boxShadow: `
+              0 20px 40px rgba(0, 0, 0, 0.25),
+              inset 0 1px 0 rgba(255, 255, 255, 0.1)
+            `,
+            position: 'relative'
           }}>
             <div style={{
-              width: '60px',
-              height: '60px',
-              background: 'linear-gradient(45deg, #667eea, #764ba2)',
-              borderRadius: '16px',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: '1px',
+              background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent)'
+            }}></div>
+            
+            <div style={{
+              width: '80px',
+              height: '80px',
+              background: `
+                linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%)
+              `,
+              borderRadius: '20px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '30px'
+              fontSize: '40px',
+              position: 'relative',
+              boxShadow: '0 8px 32px rgba(99, 102, 241, 0.3)'
             }}>
+              <div style={{
+                position: 'absolute',
+                inset: '-3px',
+                background: `
+                  linear-gradient(135deg, #6366f1, #8b5cf6, #ec4899)
+                `,
+                borderRadius: '23px',
+                opacity: 0.3,
+                filter: 'blur(8px)',
+                animation: 'glow 3s ease-in-out infinite alternate'
+              }}></div>
               🧠
             </div>
+            
             <div style={{ textAlign: 'left' }}>
-              <div style={{ fontWeight: 'bold', fontSize: '20px', color: '#1f2937' }}>MEDWAY Analytics v2.0</div>
-              <div style={{ color: '#6b7280', fontSize: '14px' }}>Sistema Inteligente de Monitoramento Psicológico</div>
+              <div style={{ 
+                fontWeight: '800', 
+                fontSize: '28px', 
+                marginBottom: '4px'
+              }} className="logo-gradient">
+                MEDWAY Analytics v3.0
+              </div>
+              <div style={{ 
+                color: 'rgba(248, 250, 252, 0.7)', 
+                fontSize: '16px',
+                fontWeight: '500'
+              }}>
+                Sistema Inteligente de Monitoramento Psicológico
+              </div>
             </div>
-            <div style={{ textAlign: 'right', fontSize: '12px', color: '#9ca3af' }}>
-              <div>Última atualização: {lastUpdate.toLocaleString('pt-BR')}</div>
-              <div style={{ marginTop: '4px' }}>
+            
+            <div style={{ 
+              textAlign: 'right', 
+              fontSize: '13px', 
+              color: 'rgba(248, 250, 252, 0.6)',
+              fontWeight: '500'
+            }}>
+              <div style={{ marginBottom: '6px' }}>
+                Última atualização: {lastUpdate.toLocaleString('pt-BR')}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 {connectionStatus === 'connected' ? (
-                  <span style={{ color: '#22c55e' }}>🟢 Conectado ao Supabase</span>
+                  <>
+                    <div style={{
+                      width: '6px',
+                      height: '6px',
+                      background: '#34d399',
+                      borderRadius: '50%',
+                      boxShadow: '0 0 8px rgba(52, 211, 153, 0.5)',
+                      animation: 'pulse 2s infinite'
+                    }}></div>
+                    <span style={{ color: '#34d399' }}>Conectado ao Supabase</span>
+                  </>
                 ) : connectionStatus === 'error' ? (
-                  <span style={{ color: '#f59e0b' }}>🟡 Modo Demo</span>
+                  <>
+                    <div style={{
+                      width: '6px',
+                      height: '6px',
+                      background: '#fbbf24',
+                      borderRadius: '50%'
+                    }}></div>
+                    <span style={{ color: '#fbbf24' }}>Modo Demo</span>
+                  </>
                 ) : (
-                  <span style={{ color: '#6b7280' }}>🔄 Conectando</span>
+                  <>
+                    <div style={{
+                      width: '6px',
+                      height: '6px',
+                      background: 'rgba(248, 250, 252, 0.5)',
+                      borderRadius: '50%'
+                    }}></div>
+                    <span>Conectando...</span>
+                  </>
                 )}
               </div>
             </div>
           </div>
         </div>
       </div>
+      
+      <style>{`
+        @keyframes slideDown {
+          from { opacity: 0; transform: translateY(-20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        @keyframes glow {
+          from { opacity: 0.2; }
+          to { opacity: 0.5; }
+        }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+        @keyframes bounce {
+          0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+          40% { transform: translateY(-10px); }
+          60% { transform: translateY(-5px); }
+        }
+      `}</style>
     </div>
   );
 }
