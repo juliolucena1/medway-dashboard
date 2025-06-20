@@ -189,12 +189,12 @@ export default function MedwayDashboard() {
     
     if (filters.terapeuta && item.terapeuta !== filters.terapeuta) return false;
     if (filters.aluno && !item.nome_aluno?.toLowerCase().includes(filters.aluno.toLowerCase())) return false;
-    if (filters.pontuacaoMin && parseFloat(item.pontuacao) < parseFloat(filters.pontuacaoMin)) return false;
-    if (filters.pontuacaoMax && parseFloat(item.pontuacao) > parseFloat(filters.pontuacaoMax)) return false;
+    if (filters.pontuacaoMin && Number(item.pontuacao) < parseFloat(filters.pontuacaoMin)) return false;
+    if (filters.pontuacaoMax && Number(item.pontuacao) > parseFloat(filters.pontuacaoMax)) return false;
     if (filters.busca && !JSON.stringify(item).toLowerCase().includes(filters.busca.toLowerCase())) return false;
     
     if (filters.status) {
-      const pontuacao = parseFloat(item.pontuacao) || 0;
+      const pontuacao = Number(item.pontuacao) || 0;
       const status = pontuacao >= 50 ? 'urgente' : pontuacao >= 30 ? 'atencao' : 'normal';
       if (status !== filters.status) return false;
     }
@@ -216,11 +216,11 @@ export default function MedwayDashboard() {
     terapeutasHoje: terapeutasHojeUnicos.length,
     alunosHoje: alunosHojeUnicos.length,
     mediaPontuacaoHoje: dadosHoje.length > 0 
-      ? (dadosHoje.reduce((acc, item) => acc + (parseFloat(item.pontuacao) || 0), 0) / dadosHoje.length)
+      ? (dadosHoje.reduce((acc, item) => acc + (Number(item.pontuacao) || 0), 0) / dadosHoje.length)
       : 0,
-    casosUrgentesHoje: dadosHoje.filter(item => parseFloat(item.pontuacao) >= 50).length,
-    casosAtencaoHoje: dadosHoje.filter(item => parseFloat(item.pontuacao) >= 30 && parseFloat(item.pontuacao) < 50).length,
-    casosNormaisHoje: dadosHoje.filter(item => parseFloat(item.pontuacao) < 30).length
+    casosUrgentesHoje: dadosHoje.filter(item => Number(item.pontuacao) >= 50).length,
+    casosAtencaoHoje: dadosHoje.filter(item => Number(item.pontuacao) >= 30 && Number(item.pontuacao) < 50).length,
+    casosNormaisHoje: dadosHoje.filter(item => Number(item.pontuacao) < 30).length
   };
 
   const crescimentoHoje = metricas.totalOntem > 0 
@@ -237,7 +237,7 @@ export default function MedwayDashboard() {
     return {
       hora: `${hora.toString().padStart(2, '0')}:00`,
       consultas: consultasHora.length,
-      urgentes: consultasHora.filter(item => parseFloat(item.pontuacao) >= 50).length
+      urgentes: consultasHora.filter(item => Number(item.pontuacao) >= 50).length
     };
   });
 
@@ -246,7 +246,7 @@ export default function MedwayDashboard() {
       const csv = [
         ['Data/Hora', 'Aluno', 'Terapeuta', 'Pontuação', 'Status', 'Observações'],
         ...dadosFiltrados.map(item => {
-          const pontuacao = parseFloat(item.pontuacao) || 0;
+          const pontuacao = Number(item.pontuacao) || 0;
           const status = pontuacao >= 50 ? 'Urgente' : pontuacao >= 30 ? 'Atenção' : 'Normal';
           return [
             new Date(item.created_at).toLocaleString('pt-BR'),
@@ -753,7 +753,7 @@ export default function MedwayDashboard() {
               </thead>
               <tbody className="divide-y divide-gray-200/50">
                 {dadosFiltrados.slice(0, 50).map((item, index) => {
-                  const pontuacao = parseFloat(item.pontuacao) || 0;
+                  const pontuacao = Number(item.pontuacao) || 0;
                   const status = pontuacao >= 50 ? 'urgente' : pontuacao >= 30 ? 'atencao' : 'normal';
                   const statusConfig = {
                     urgente: { emoji: '🔴', text: 'Urgente', bg: 'bg-red-50', textColor: 'text-red-800', borderColor: 'border-l-red-500' },
