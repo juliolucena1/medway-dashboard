@@ -1,8 +1,15 @@
+import type { Metadata } from 'next'
+import { Inter } from 'next/font/google'
 import './globals.css'
 
-export const metadata = {
-  title: 'MEDWAY Analytics - Dashboard',
-  description: 'Sistema de monitoramento',
+const inter = Inter({ subsets: ['latin'] })
+
+export const metadata: Metadata = {
+  title: 'MEDWAY Analytics | Dashboard Inteligente',
+  description: 'Sistema Inteligente de Monitoramento Psicológico - MEDWAY Analytics v2.0',
+  keywords: 'medway, analytics, psicologia, monitoramento, dashboard',
+  authors: [{ name: 'MEDWAY Team' }],
+  viewport: 'width=device-width, initial-scale=1',
 }
 
 export default function RootLayout({
@@ -12,7 +19,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR">
-      <body>{children}</body>
+      <body className={inter.className}>
+        {children}
+      </body>
     </html>
   )
 }
