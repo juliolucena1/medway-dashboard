@@ -146,7 +146,7 @@ export default function MedwayDashboard() {
     }
 
     // Insight sobre produtividade
-    const terapeutasAtivos = [...new Set(dadosHoje.map(item => item.terapeuta))];
+    const terapeutasAtivos = Array.from(new Set(dadosHoje.map(item => item.terapeuta)));
     if (terapeutasAtivos.length > 0) {
       const mediaPorTerapeuta = dadosHoje.length / terapeutasAtivos.length;
       insights.push({
