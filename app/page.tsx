@@ -149,12 +149,12 @@ export default function MedwayDashboard() {
     fetchData();
     
     if (realTimeEnabled) {
-      const interval = setInterval(fetchData, 15000); // Atualiza a cada 15s
+      const interval = setInterval(fetchData, 15000);
       return () => clearInterval(interval);
     }
   }, [realTimeEnabled, fetchData]);
 
-  // Função helper para obter valores únicos (compatível com TypeScript)
+  // Função helper para obter valores únicos
   const getUniqueValues = (arr: Consulta[], key: keyof Consulta): string[] => {
     const uniqueSet = new Set(arr.map(item => String(item[key])).filter(Boolean));
     return Array.from(uniqueSet);
@@ -205,7 +205,7 @@ export default function MedwayDashboard() {
   const dadosHoje = filtrarPorPeriodo(data, activeView);
   const dadosOntem = filtrarPorPeriodo(data, 'ontem');
 
-  // Métricas principais (CORRIGIDAS - sem spread operator em Set)
+  // Métricas principais
   const terapeutasHojeUnicos = getUniqueValues(dadosHoje, 'terapeuta');
   const alunosHojeUnicos = getUniqueValues(dadosHoje, 'nome_aluno');
   const terapeutasUnicos = getUniqueValues(data, 'terapeuta');
@@ -226,20 +226,6 @@ export default function MedwayDashboard() {
   const crescimentoHoje = metricas.totalOntem > 0 
     ? ((metricas.totalHoje - metricas.totalOntem) / metricas.totalOntem * 100)
     : 0;
-
-  // Dados para análise de performance por hora
-  const dadosPorHora = Array.from({ length: 24 }, (_, hora) => {
-    const consultasHora = dadosHoje.filter(item => {
-      const horaItem = new Date(item.created_at).getHours();
-      return horaItem === hora;
-    });
-    
-    return {
-      hora: `${hora.toString().padStart(2, '0')}:00`,
-      consultas: consultasHora.length,
-      urgentes: consultasHora.filter(item => Number(item.pontuacao) >= 50).length
-    };
-  });
 
   const exportData = () => {
     try {
@@ -273,197 +259,428 @@ export default function MedwayDashboard() {
     }
   };
 
-  const clearFilters = () => {
-    setFilters({
-      terapeuta: '',
-      periodo: 'hoje',
-      status: '',
-      pontuacaoMin: '',
-      pontuacaoMax: '',
-      aluno: '',
-      busca: ''
-    });
-  };
-
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 flex items-center justify-center">
-        <div className="bg-white/90 backdrop-blur-lg rounded-3xl shadow-2xl p-8 max-w-md text-center">
-          <div className="relative">
-            <div className="w-20 h-20 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
-              <span className="text-4xl animate-pulse">🧠</span>
-            </div>
-            <div className="absolute -top-2 -right-2 w-6 h-6 bg-green-500 rounded-full border-2 border-white animate-ping"></div>
+      <div style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontFamily: 'Arial, sans-serif'
+      }}>
+        <div style={{
+          background: 'rgba(255, 255, 255, 0.95)',
+          borderRadius: '20px',
+          padding: '40px',
+          textAlign: 'center',
+          boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
+          maxWidth: '400px',
+          width: '90%'
+        }}>
+          <div style={{
+            width: '80px',
+            height: '80px',
+            background: 'linear-gradient(45deg, #667eea, #764ba2)',
+            borderRadius: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 20px',
+            fontSize: '40px'
+          }}>
+            🧠
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-3">MEDWAY Analytics</h2>
-          <p className="text-gray-600 mb-6">Conectando ao sistema...</p>
-          <div className="flex justify-center space-x-1 mb-4">
-            <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce"></div>
-            <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-            <div className="w-2 h-2 bg-pink-500 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+          <h2 style={{ color: '#333', marginBottom: '10px', fontSize: '24px' }}>MEDWAY Analytics</h2>
+          <p style={{ color: '#666', marginBottom: '20px' }}>Conectando ao sistema...</p>
+          <div style={{ marginBottom: '10px' }}>
+            <div style={{
+              width: '8px',
+              height: '8px',
+              background: '#667eea',
+              borderRadius: '50%',
+              display: 'inline-block',
+              margin: '0 3px',
+              animation: 'bounce 1.4s ease-in-out infinite'
+            }}></div>
+            <div style={{
+              width: '8px',
+              height: '8px',
+              background: '#764ba2',
+              borderRadius: '50%',
+              display: 'inline-block',
+              margin: '0 3px',
+              animation: 'bounce 1.4s ease-in-out 0.16s infinite'
+            }}></div>
+            <div style={{
+              width: '8px',
+              height: '8px',
+              background: '#f093fb',
+              borderRadius: '50%',
+              display: 'inline-block',
+              margin: '0 3px',
+              animation: 'bounce 1.4s ease-in-out 0.32s infinite'
+            }}></div>
           </div>
-          <p className="text-xs text-gray-500">Carregando dados em tempo real...</p>
+          <p style={{ color: '#999', fontSize: '12px' }}>Carregando dados em tempo real...</p>
         </div>
+        <style>{`
+          @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+          }
+        `}</style>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
-      {/* Header Ultra Moderno */}
-      <div className="bg-white/80 backdrop-blur-xl shadow-2xl border-b border-white/20 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center py-4 space-y-4 lg:space-y-0">
-            <div className="flex items-center space-x-4">
-              <div className="relative">
-                <div className="w-14 h-14 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 rounded-2xl flex items-center justify-center shadow-xl transform rotate-3">
-                  <span className="text-3xl transform -rotate-3">🧠</span>
-                </div>
-                <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${
-                  connectionStatus === 'connected' ? 'bg-green-500 animate-pulse' :
-                  connectionStatus === 'connecting' ? 'bg-yellow-500 animate-ping' :
-                  'bg-red-500'
-                }`}></div>
+    <div style={{
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      fontFamily: 'Arial, sans-serif'
+    }}>
+      <style>{`
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        .card {
+          background: rgba(255, 255, 255, 0.95);
+          border-radius: 20px;
+          padding: 24px;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+          margin-bottom: 20px;
+          transition: all 0.3s ease;
+        }
+        
+        .card:hover {
+          transform: translateY(-5px);
+          box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+        
+        .metric-card {
+          background: rgba(255, 255, 255, 0.95);
+          border-radius: 16px;
+          padding: 20px;
+          text-align: center;
+          box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+          transition: all 0.3s ease;
+          margin-bottom: 20px;
+        }
+        
+        .metric-card:hover {
+          transform: translateY(-3px);
+          box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+        }
+        
+        .btn {
+          padding: 12px 20px;
+          border-radius: 12px;
+          border: none;
+          cursor: pointer;
+          font-weight: 600;
+          transition: all 0.3s ease;
+          margin: 5px;
+          font-size: 14px;
+        }
+        
+        .btn-primary {
+          background: linear-gradient(45deg, #667eea, #764ba2);
+          color: white;
+        }
+        
+        .btn-primary:hover {
+          background: linear-gradient(45deg, #5a6fd8, #6a4190);
+          transform: translateY(-2px);
+        }
+        
+        .btn-success {
+          background: linear-gradient(45deg, #4ade80, #22c55e);
+          color: white;
+        }
+        
+        .btn-warning {
+          background: linear-gradient(45deg, #fbbf24, #f59e0b);
+          color: white;
+        }
+        
+        .btn-secondary {
+          background: linear-gradient(45deg, #6b7280, #4b5563);
+          color: white;
+        }
+        
+        .status-normal { color: #22c55e; font-weight: bold; }
+        .status-atencao { color: #f59e0b; font-weight: bold; }
+        .status-urgente { color: #ef4444; font-weight: bold; }
+        
+        .progress-bar {
+          width: 100%;
+          height: 8px;
+          background: #e5e7eb;
+          border-radius: 4px;
+          overflow: hidden;
+          margin: 10px 0;
+        }
+        
+        .progress-fill {
+          height: 100%;
+          transition: width 1s ease;
+        }
+        
+        .progress-normal { background: linear-gradient(90deg, #4ade80, #22c55e); }
+        .progress-atencao { background: linear-gradient(90deg, #fbbf24, #f59e0b); }
+        .progress-urgente { background: linear-gradient(90deg, #ef4444, #dc2626); }
+        
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          background: white;
+          border-radius: 12px;
+          overflow: hidden;
+        }
+        
+        th {
+          background: linear-gradient(45deg, #667eea, #764ba2);
+          color: white;
+          padding: 12px;
+          font-weight: 600;
+          font-size: 12px;
+          text-transform: uppercase;
+        }
+        
+        td {
+          padding: 12px;
+          border-bottom: 1px solid #e5e7eb;
+        }
+        
+        tr:hover {
+          background: #f9fafb;
+        }
+        
+        .header {
+          background: rgba(255, 255, 255, 0.9);
+          backdrop-filter: blur(10px);
+          padding: 20px 0;
+          margin-bottom: 20px;
+          border-radius: 0 0 20px 20px;
+        }
+        
+        .container {
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 0 20px;
+        }
+        
+        .grid {
+          display: grid;
+          gap: 20px;
+        }
+        
+        .grid-cols-4 {
+          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        }
+        
+        .grid-cols-3 {
+          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        }
+        
+        .flex {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+        
+        .flex-wrap {
+          flex-wrap: wrap;
+        }
+        
+        .justify-between {
+          justify-content: space-between;
+        }
+        
+        .text-center {
+          text-align: center;
+        }
+        
+        .input {
+          padding: 12px;
+          border: 2px solid #e5e7eb;
+          border-radius: 8px;
+          font-size: 14px;
+          width: 100%;
+          margin-bottom: 10px;
+        }
+        
+        .input:focus {
+          outline: none;
+          border-color: #667eea;
+        }
+        
+        .alert {
+          padding: 20px;
+          border-radius: 12px;
+          margin-bottom: 20px;
+          background: linear-gradient(45deg, #fbbf24, #f59e0b);
+          color: white;
+        }
+        
+        .metric-number {
+          font-size: 36px;
+          font-weight: bold;
+          margin: 10px 0;
+        }
+        
+        .metric-label {
+          color: #6b7280;
+          font-size: 14px;
+          margin-bottom: 5px;
+        }
+        
+        .status-badge {
+          padding: 4px 12px;
+          border-radius: 20px;
+          font-size: 12px;
+          font-weight: 600;
+          color: white;
+        }
+        
+        .badge-normal { background: #22c55e; }
+        .badge-atencao { background: #f59e0b; }
+        .badge-urgente { background: #ef4444; }
+        
+        @media (max-width: 768px) {
+          .container { padding: 0 10px; }
+          .grid-cols-4 { grid-template-columns: 1fr; }
+          .grid-cols-3 { grid-template-columns: 1fr; }
+          .flex { flex-direction: column; align-items: stretch; }
+        }
+      `}</style>
+
+      {/* Header */}
+      <div className="header">
+        <div className="container">
+          <div className="flex justify-between">
+            <div className="flex">
+              <div style={{
+                width: '60px',
+                height: '60px',
+                background: 'linear-gradient(45deg, #667eea, #764ba2)',
+                borderRadius: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '30px',
+                marginRight: '15px'
+              }}>
+                🧠
               </div>
               <div>
-                <h1 className="text-2xl lg:text-3xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+                <h1 style={{
+                  fontSize: '28px',
+                  fontWeight: 'bold',
+                  background: 'linear-gradient(45deg, #667eea, #764ba2)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  marginBottom: '5px'
+                }}>
                   MEDWAY Analytics
                 </h1>
-                <div className="flex items-center space-x-2 text-sm text-gray-600">
-                  <span className="flex items-center">
-                    {connectionStatus === 'connected' && <span className="text-green-500 mr-1">●</span>}
-                    {connectionStatus === 'connecting' && <span className="text-yellow-500 mr-1">●</span>}
-                    {connectionStatus === 'error' && <span className="text-red-500 mr-1">●</span>}
-                    {data.length} registros
-                  </span>
-                  <span>•</span>
-                  <span>{lastUpdate.toLocaleTimeString('pt-BR')}</span>
-                  {error && <span className="text-orange-600">• Modo Demo</span>}
+                <div style={{ fontSize: '14px', color: '#6b7280' }}>
+                  <span style={{ color: connectionStatus === 'connected' ? '#22c55e' : '#ef4444' }}>●</span>
+                  {' '}{data.length} registros • {lastUpdate.toLocaleTimeString('pt-BR')}
+                  {error && <span style={{ color: '#f59e0b' }}> • Modo Demo</span>}
                 </div>
               </div>
             </div>
             
-            <div className="flex flex-wrap items-center gap-3">
-              {/* Seletor de Período */}
-              <div className="flex bg-white rounded-xl p-1 shadow-lg border border-gray-200">
-                {[
-                  { key: 'hoje', label: 'Hoje', icon: '📅' },
-                  { key: '7dias', label: '7d', icon: '📊' },
-                  { key: '30dias', label: '30d', icon: '📈' }
-                ].map(({ key, label, icon }) => (
-                  <button
-                    key={key}
-                    onClick={() => {
-                      setActiveView(key);
-                      setFilters({...filters, periodo: key});
-                    }}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center space-x-1 ${
-                      activeView === key
-                        ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-md transform scale-105'
-                        : 'text-gray-600 hover:bg-gray-100'
-                    }`}
-                  >
-                    <span>{icon}</span>
-                    <span>{label}</span>
-                  </button>
-                ))}
-              </div>
-
-              {/* Controles */}
+            <div className="flex flex-wrap">
+              <button
+                onClick={() => setActiveView('hoje')}
+                className={`btn ${activeView === 'hoje' ? 'btn-primary' : 'btn-secondary'}`}
+              >
+                📅 Hoje
+              </button>
+              <button
+                onClick={() => setActiveView('7dias')}
+                className={`btn ${activeView === '7dias' ? 'btn-primary' : 'btn-secondary'}`}
+              >
+                📊 7d
+              </button>
+              <button
+                onClick={() => setActiveView('30dias')}
+                className={`btn ${activeView === '30dias' ? 'btn-primary' : 'btn-secondary'}`}
+              >
+                📈 30d
+              </button>
               <button
                 onClick={() => setRealTimeEnabled(!realTimeEnabled)}
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all shadow-lg ${
-                  realTimeEnabled 
-                    ? 'bg-green-500 text-white hover:bg-green-600 shadow-green-200' 
-                    : 'bg-gray-500 text-white hover:bg-gray-600'
-                }`}
+                className={`btn ${realTimeEnabled ? 'btn-success' : 'btn-secondary'}`}
               >
-                <span className={`mr-2 ${realTimeEnabled ? 'animate-spin' : ''}`}>🔄</span>
-                {realTimeEnabled ? 'LIVE' : 'PAUSADO'}
+                🔄 {realTimeEnabled ? 'LIVE' : 'PAUSADO'}
               </button>
-
               <button
                 onClick={() => setShowFilters(!showFilters)}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all shadow-lg flex items-center"
+                className="btn btn-primary"
               >
-                <span className="mr-2">🔍</span>
-                Filtros
-              </button>
-
-              <button
-                onClick={fetchData}
-                disabled={loading}
-                className="px-4 py-2 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-all shadow-lg disabled:opacity-50"
-              >
-                Atualizar
+                🔍 Filtros
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="container">
         {/* Status de Conexão */}
         {error && (
-          <div className="bg-gradient-to-r from-yellow-400 to-orange-500 rounded-2xl shadow-xl p-4 mb-6 text-white">
-            <div className="flex items-center">
-              <span className="text-2xl mr-3">⚠️</span>
+          <div className="alert">
+            <div className="flex">
+              <span style={{ fontSize: '24px', marginRight: '10px' }}>⚠️</span>
               <div>
-                <p className="font-bold">Modo Demonstração Ativo</p>
-                <p className="text-yellow-100 text-sm">
-                  Exibindo dados de exemplo. Configure as variáveis de ambiente para dados reais.
-                </p>
+                <strong>Modo Demonstração Ativo</strong>
+                <br />
+                <small>Exibindo dados de exemplo. Configure as variáveis de ambiente para dados reais.</small>
               </div>
             </div>
           </div>
         )}
 
-        {/* Painel de Filtros Avançados */}
+        {/* Filtros */}
         {showFilters && (
-          <div className="bg-white/90 backdrop-blur-lg rounded-3xl shadow-2xl p-6 mb-8 border border-white/20">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900 flex items-center">
-                <span className="text-2xl mr-3">✨</span>
-                Filtros Avançados
-              </h2>
-              <div className="flex space-x-3">
-                <button
-                  onClick={exportData}
-                  className="px-6 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all shadow-lg flex items-center"
-                >
-                  <span className="mr-2">💾</span>
-                  Exportar CSV
+          <div className="card">
+            <div className="flex justify-between" style={{ marginBottom: '20px' }}>
+              <h2 style={{ fontSize: '20px', fontWeight: 'bold' }}>✨ Filtros Avançados</h2>
+              <div className="flex">
+                <button onClick={exportData} className="btn btn-success">
+                  💾 Exportar CSV
                 </button>
-                <button
-                  onClick={clearFilters}
-                  className="px-6 py-2 bg-gray-600 text-white rounded-xl hover:bg-gray-700 transition-all shadow-lg flex items-center"
+                <button 
+                  onClick={() => setFilters({
+                    terapeuta: '', periodo: 'hoje', status: '', pontuacaoMin: '', pontuacaoMax: '', aluno: '', busca: ''
+                  })}
+                  className="btn btn-secondary"
                 >
-                  <span className="mr-2">🗑️</span>
-                  Limpar
+                  🗑️ Limpar
                 </button>
               </div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Busca geral */}
-              <div className="lg:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">🔍 Busca Geral</label>
+            <div className="grid grid-cols-4">
+              <div>
+                <label className="metric-label">🔍 Busca Geral</label>
                 <input
                   type="text"
                   value={filters.busca}
                   onChange={(e) => setFilters({...filters, busca: e.target.value})}
                   placeholder="Buscar em todos os campos..."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  className="input"
                 />
               </div>
-
-              {/* Terapeuta */}
+              
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">👥 Terapeuta</label>
+                <label className="metric-label">👥 Terapeuta</label>
                 <select
                   value={filters.terapeuta}
                   onChange={(e) => setFilters({...filters, terapeuta: e.target.value})}
-                  className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all"
+                  className="input"
                 >
                   <option value="">Todos</option>
                   {terapeutasUnicos.map((terapeuta: string) => (
@@ -471,14 +688,13 @@ export default function MedwayDashboard() {
                   ))}
                 </select>
               </div>
-
-              {/* Status */}
+              
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">🚨 Status</label>
+                <label className="metric-label">🚨 Status</label>
                 <select
                   value={filters.status}
                   onChange={(e) => setFilters({...filters, status: e.target.value})}
-                  className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all"
+                  className="input"
                 >
                   <option value="">Todos</option>
                   <option value="normal">🟢 Normal (0-29)</option>
@@ -486,325 +702,185 @@ export default function MedwayDashboard() {
                   <option value="urgente">🔴 Urgente (50+)</option>
                 </select>
               </div>
-            </div>
-
-            <div className="mt-6 flex items-center justify-between">
-              <div className="text-sm text-gray-600">
-                <strong>{dadosFiltrados.length}</strong> registros encontrados
-                {filters.periodo === 'hoje' && ` de ${metricas.totalHoje} hoje`}
-              </div>
-              <div className="flex items-center space-x-4 text-xs text-gray-500">
-                <span>🟢 {metricas.casosNormaisHoje} Normais</span>
-                <span>🟡 {metricas.casosAtencaoHoje} Atenção</span>
-                <span>🔴 {metricas.casosUrgentesHoje} Urgentes</span>
+              
+              <div>
+                <label className="metric-label">📊 Resultados</label>
+                <div style={{ padding: '12px', background: '#f3f4f6', borderRadius: '8px' }}>
+                  <strong>{dadosFiltrados.length}</strong> registros
+                </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* Cards de Métricas Ultra Modernos */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {/* Total Hoje */}
-          <div className="bg-white/90 backdrop-blur-lg rounded-3xl shadow-2xl p-6 border border-white/20 hover:shadow-3xl transition-all duration-500 transform hover:-translate-y-2 hover:scale-105">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Consultas Hoje</p>
-                <p className="text-4xl font-bold text-indigo-600 my-2">{metricas.totalHoje}</p>
-                <div className="flex items-center">
-                  <div className={`text-sm flex items-center ${crescimentoHoje >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    <span className={`mr-1 ${crescimentoHoje < 0 ? 'rotate-180' : ''}`}>📈</span>
-                    {Math.abs(crescimentoHoje).toFixed(1)}% vs ontem
-                  </div>
-                </div>
-              </div>
-              <div className="w-16 h-16 bg-gradient-to-r from-indigo-500 to-blue-500 rounded-2xl flex items-center justify-center shadow-lg">
-                <span className="text-3xl">📅</span>
-              </div>
+        {/* Cards de Métricas */}
+        <div className="grid grid-cols-4">
+          <div className="metric-card">
+            <div className="metric-label">Consultas {activeView === 'hoje' ? 'Hoje' : activeView}</div>
+            <div className="metric-number" style={{ color: '#667eea' }}>{metricas.totalHoje}</div>
+            <div className={crescimentoHoje >= 0 ? 'status-normal' : 'status-urgente'}>
+              {crescimentoHoje >= 0 ? '📈' : '📉'} {Math.abs(crescimentoHoje).toFixed(1)}% vs ontem
             </div>
           </div>
 
-          {/* Terapeutas Ativos */}
-          <div className="bg-white/90 backdrop-blur-lg rounded-3xl shadow-2xl p-6 border border-white/20 hover:shadow-3xl transition-all duration-500 transform hover:-translate-y-2 hover:scale-105">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Terapeutas Ativos</p>
-                <p className="text-4xl font-bold text-green-600 my-2">{metricas.terapeutasHoje}</p>
-                <p className="text-xs text-gray-500">de {terapeutasUnicos.length} total</p>
-              </div>
-              <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl flex items-center justify-center shadow-lg">
-                <span className="text-3xl">👥</span>
-              </div>
-            </div>
+          <div className="metric-card">
+            <div className="metric-label">Terapeutas Ativos</div>
+            <div className="metric-number" style={{ color: '#22c55e' }}>{metricas.terapeutasHoje}</div>
+            <div className="metric-label">de {terapeutasUnicos.length} total</div>
           </div>
 
-          {/* Alunos Atendidos */}
-          <div className="bg-white/90 backdrop-blur-lg rounded-3xl shadow-2xl p-6 border border-white/20 hover:shadow-3xl transition-all duration-500 transform hover:-translate-y-2 hover:scale-105">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Alunos Atendidos</p>
-                <p className="text-4xl font-bold text-purple-600 my-2">{metricas.alunosHoje}</p>
-                <p className="text-xs text-gray-500">únicos hoje</p>
-              </div>
-              <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg">
-                <span className="text-3xl">🎓</span>
-              </div>
-            </div>
+          <div className="metric-card">
+            <div className="metric-label">Alunos Atendidos</div>
+            <div className="metric-number" style={{ color: '#764ba2' }}>{metricas.alunosHoje}</div>
+            <div className="metric-label">únicos hoje</div>
           </div>
 
-          {/* Média de Pontuação */}
-          <div className="bg-white/90 backdrop-blur-lg rounded-3xl shadow-2xl p-6 border border-white/20 hover:shadow-3xl transition-all duration-500 transform hover:-translate-y-2 hover:scale-105">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Média Pontuação</p>
-                <p className="text-4xl font-bold text-orange-600 my-2">{metricas.mediaPontuacaoHoje.toFixed(1)}</p>
-                <div className="flex items-center">
-                  <div className={`w-3 h-3 rounded-full mr-2 ${
-                    metricas.mediaPontuacaoHoje >= 50 ? 'bg-red-500' :
-                    metricas.mediaPontuacaoHoje >= 30 ? 'bg-yellow-500' : 'bg-green-500'
-                  }`}></div>
-                  <p className="text-xs text-gray-500">
-                    {metricas.mediaPontuacaoHoje >= 50 ? 'Alto risco' :
-                     metricas.mediaPontuacaoHoje >= 30 ? 'Atenção' : 'Normal'}
-                  </p>
-                </div>
-              </div>
-              <div className="w-16 h-16 bg-gradient-to-r from-orange-500 to-yellow-500 rounded-2xl flex items-center justify-center shadow-lg">
-                <span className="text-3xl">🎯</span>
-              </div>
+          <div className="metric-card">
+            <div className="metric-label">Média Pontuação</div>
+            <div className="metric-number" style={{ color: '#f59e0b' }}>{metricas.mediaPontuacaoHoje.toFixed(1)}</div>
+            <div className={
+              metricas.mediaPontuacaoHoje >= 50 ? 'status-urgente' :
+              metricas.mediaPontuacaoHoje >= 30 ? 'status-atencao' : 'status-normal'
+            }>
+              {metricas.mediaPontuacaoHoje >= 50 ? 'Alto risco' :
+               metricas.mediaPontuacaoHoje >= 30 ? 'Atenção' : 'Normal'}
             </div>
           </div>
         </div>
 
-        {/* Alertas de Emergência ULTRA */}
+        {/* Alertas de Emergência */}
         {metricas.casosUrgentesHoje > 0 && (
-          <div className="bg-gradient-to-r from-red-500 via-pink-500 to-red-600 rounded-3xl shadow-2xl p-6 mb-8 text-white relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-r from-red-600/20 to-pink-600/20 animate-pulse"></div>
-            <div className="relative flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mr-4">
-                  <span className="text-4xl animate-bounce">🚨</span>
-                </div>
-                <div>
-                  <h3 className="text-2xl font-bold mb-2">
-                    ALERTA CRÍTICO: {metricas.casosUrgentesHoje} Casos Urgentes
-                  </h3>
-                  <p className="text-red-100">
-                    Pontuação ≥ 50 - Intervenção imediata necessária
-                  </p>
-                  <div className="flex space-x-4 mt-2 text-sm">
-                    <span>⏰ Identificados hoje</span>
-                    <span>📋 Requer supervisão</span>
-                  </div>
-                </div>
+          <div style={{
+            background: 'linear-gradient(45deg, #ef4444, #dc2626)',
+            color: 'white',
+            padding: '20px',
+            borderRadius: '16px',
+            marginBottom: '20px'
+          }}>
+            <div className="flex">
+              <div style={{
+                fontSize: '40px',
+                marginRight: '15px',
+                animation: 'bounce 1s ease-in-out infinite'
+              }}>
+                🚨
               </div>
-              <div className="hidden sm:block">
-                <button className="bg-white/20 hover:bg-white/30 px-6 py-3 rounded-xl transition-all font-medium">
-                  Ver Detalhes
-                </button>
+              <div>
+                <h3 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '5px' }}>
+                  ALERTA CRÍTICO: {metricas.casosUrgentesHoje} Casos Urgentes
+                </h3>
+                <p>Pontuação ≥ 50 - Intervenção imediata necessária</p>
               </div>
             </div>
           </div>
         )}
 
-        {/* Distribuição Visual com Animações */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          {/* Status Normal */}
-          <div className="bg-white/90 backdrop-blur-lg rounded-3xl shadow-2xl p-6 border border-white/20 hover:shadow-3xl transition-all duration-500">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-gray-900">Casos Normais</h3>
-              <div className="w-12 h-12 bg-green-100 rounded-2xl flex items-center justify-center">
-                <span className="text-2xl">🟢</span>
-              </div>
+        {/* Distribuição Visual */}
+        <div className="grid grid-cols-3">
+          <div className="metric-card">
+            <h3 style={{ marginBottom: '15px', fontSize: '18px' }}>🟢 Casos Normais</h3>
+            <div className="metric-number" style={{ color: '#22c55e' }}>{metricas.casosNormaisHoje}</div>
+            <div className="metric-label">Pontuação 0-29</div>
+            <div className="progress-bar">
+              <div 
+                className="progress-fill progress-normal"
+                style={{ width: `${dadosHoje.length > 0 ? (metricas.casosNormaisHoje / dadosHoje.length) * 100 : 0}%` }}
+              ></div>
             </div>
-            <div className="text-center">
-              <div className="text-5xl font-bold text-green-600 mb-3">{metricas.casosNormaisHoje}</div>
-              <p className="text-sm text-gray-600 mb-4">Pontuação 0-29</p>
-              <div className="relative w-full bg-gray-200 rounded-full h-4 overflow-hidden">
-                <div 
-                  className="bg-gradient-to-r from-green-400 to-green-600 h-4 rounded-full transition-all duration-1000 ease-out"
-                  style={{ width: `${dadosHoje.length > 0 ? (metricas.casosNormaisHoje / dadosHoje.length) * 100 : 0}%` }}
-                ></div>
-              </div>
-              <p className="text-xs text-gray-500 mt-3">
-                {dadosHoje.length > 0 ? ((metricas.casosNormaisHoje / dadosHoje.length) * 100).toFixed(1) : 0}% do total
-              </p>
+            <div className="metric-label">
+              {dadosHoje.length > 0 ? ((metricas.casosNormaisHoje / dadosHoje.length) * 100).toFixed(1) : 0}% do total
             </div>
           </div>
 
-          {/* Status Atenção */}
-          <div className="bg-white/90 backdrop-blur-lg rounded-3xl shadow-2xl p-6 border border-white/20 hover:shadow-3xl transition-all duration-500">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-gray-900">Casos Atenção</h3>
-              <div className="w-12 h-12 bg-yellow-100 rounded-2xl flex items-center justify-center">
-                <span className="text-2xl">🟡</span>
-              </div>
+          <div className="metric-card">
+            <h3 style={{ marginBottom: '15px', fontSize: '18px' }}>🟡 Casos Atenção</h3>
+            <div className="metric-number" style={{ color: '#f59e0b' }}>{metricas.casosAtencaoHoje}</div>
+            <div className="metric-label">Pontuação 30-49</div>
+            <div className="progress-bar">
+              <div 
+                className="progress-fill progress-atencao"
+                style={{ width: `${dadosHoje.length > 0 ? (metricas.casosAtencaoHoje / dadosHoje.length) * 100 : 0}%` }}
+              ></div>
             </div>
-            <div className="text-center">
-              <div className="text-5xl font-bold text-yellow-600 mb-3">{metricas.casosAtencaoHoje}</div>
-              <p className="text-sm text-gray-600 mb-4">Pontuação 30-49</p>
-              <div className="relative w-full bg-gray-200 rounded-full h-4 overflow-hidden">
-                <div 
-                  className="bg-gradient-to-r from-yellow-400 to-yellow-600 h-4 rounded-full transition-all duration-1000 ease-out"
-                  style={{ width: `${dadosHoje.length > 0 ? (metricas.casosAtencaoHoje / dadosHoje.length) * 100 : 0}%` }}
-                ></div>
-              </div>
-              <p className="text-xs text-gray-500 mt-3">
-                {dadosHoje.length > 0 ? ((metricas.casosAtencaoHoje / dadosHoje.length) * 100).toFixed(1) : 0}% do total
-              </p>
+            <div className="metric-label">
+              {dadosHoje.length > 0 ? ((metricas.casosAtencaoHoje / dadosHoje.length) * 100).toFixed(1) : 0}% do total
             </div>
           </div>
 
-          {/* Status Urgente */}
-          <div className="bg-white/90 backdrop-blur-lg rounded-3xl shadow-2xl p-6 border border-white/20 hover:shadow-3xl transition-all duration-500">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-gray-900">Casos Urgentes</h3>
-              <div className="w-12 h-12 bg-red-100 rounded-2xl flex items-center justify-center">
-                <span className="text-2xl">🔴</span>
-              </div>
+          <div className="metric-card">
+            <h3 style={{ marginBottom: '15px', fontSize: '18px' }}>🔴 Casos Urgentes</h3>
+            <div className="metric-number" style={{ color: '#ef4444' }}>{metricas.casosUrgentesHoje}</div>
+            <div className="metric-label">Pontuação ≥ 50</div>
+            <div className="progress-bar">
+              <div 
+                className="progress-fill progress-urgente"
+                style={{ width: `${dadosHoje.length > 0 ? (metricas.casosUrgentesHoje / dadosHoje.length) * 100 : 0}%` }}
+              ></div>
             </div>
-            <div className="text-center">
-              <div className="text-5xl font-bold text-red-600 mb-3">{metricas.casosUrgentesHoje}</div>
-              <p className="text-sm text-gray-600 mb-4">Pontuação ≥ 50</p>
-              <div className="relative w-full bg-gray-200 rounded-full h-4 overflow-hidden">
-                <div 
-                  className="bg-gradient-to-r from-red-400 to-red-600 h-4 rounded-full transition-all duration-1000 ease-out"
-                  style={{ width: `${dadosHoje.length > 0 ? (metricas.casosUrgentesHoje / dadosHoje.length) * 100 : 0}%` }}
-                ></div>
-              </div>
-              <p className="text-xs text-gray-500 mt-3">
-                {dadosHoje.length > 0 ? ((metricas.casosUrgentesHoje / dadosHoje.length) * 100).toFixed(1) : 0}% do total
-              </p>
+            <div className="metric-label">
+              {dadosHoje.length > 0 ? ((metricas.casosUrgentesHoje / dadosHoje.length) * 100).toFixed(1) : 0}% do total
             </div>
           </div>
         </div>
 
-        {/* Gráfico de Atividade por Hora */}
-        <div className="bg-white/90 backdrop-blur-lg rounded-3xl shadow-2xl p-6 mb-8 border border-white/20">
-          <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
-            <span className="text-2xl mr-3">📊</span>
-            Atividade por Hora - {activeView === 'hoje' ? 'Hoje' : activeView === '7dias' ? 'Últimos 7 dias' : 'Últimos 30 dias'}
+        {/* Tabela */}
+        <div className="card">
+          <h3 style={{ marginBottom: '20px', fontSize: '20px', fontWeight: 'bold' }}>
+            📋 Registros Detalhados ({dadosFiltrados.length})
           </h3>
-          <div className="grid grid-cols-8 md:grid-cols-12 lg:grid-cols-24 gap-2">
-            {dadosPorHora.map((item, index) => (
-              <div key={index} className="text-center">
-                <div 
-                  className="bg-gradient-to-t from-indigo-500 to-purple-500 rounded-lg mb-2 transition-all hover:scale-110"
-                  style={{ 
-                    height: `${Math.max(item.consultas * 8, 4)}px`,
-                    minHeight: '4px'
-                  }}
-                  title={`${item.hora}: ${item.consultas} consultas`}
-                ></div>
-                <div className="text-xs text-gray-500">{item.hora.split(':')[0]}</div>
-              </div>
-            ))}
-          </div>
-          <div className="text-center mt-4">
-            <p className="text-sm text-gray-600">
-              Pico: {Math.max(...dadosPorHora.map(h => h.consultas))} consultas
-              • Total: {dadosPorHora.reduce((acc, h) => acc + h.consultas, 0)} consultas
-            </p>
-          </div>
-        </div>
-
-        {/* Tabela Ultra Moderna */}
-        <div className="bg-white/90 backdrop-blur-lg rounded-3xl shadow-2xl border border-white/20 overflow-hidden">
-          <div className="px-6 py-6 bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-500 text-white">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-              <div>
-                <h3 className="text-xl font-bold flex items-center mb-2">
-                  <span className="text-2xl mr-3">📋</span>
-                  Registros Detalhados ({dadosFiltrados.length})
-                </h3>
-                <p className="text-indigo-100 text-sm">
-                  Monitoramento em tempo real dos atendimentos
-                </p>
-              </div>
-              <div className="mt-4 sm:mt-0">
-                <div className="flex items-center space-x-2 text-sm">
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-green-400 rounded-full mr-2"></div>
-                    <span>Normal</span>
-                  </div>
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-yellow-400 rounded-full mr-2"></div>
-                    <span>Atenção</span>
-                  </div>
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-red-400 rounded-full mr-2"></div>
-                    <span>Urgente</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
           
-          <div className="overflow-x-auto">
-            <table className="min-w-full">
-              <thead className="bg-gray-50/80">
+          <div style={{ overflowX: 'auto' }}>
+            <table>
+              <thead>
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data/Hora</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aluno</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Terapeuta</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pontuação</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Observações</th>
+                  <th>Data/Hora</th>
+                  <th>Aluno</th>
+                  <th>Terapeuta</th>
+                  <th>Pontuação</th>
+                  <th>Status</th>
+                  <th>Observações</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200/50">
+              <tbody>
                 {dadosFiltrados.slice(0, 50).map((item, index) => {
                   const pontuacao = Number(item.pontuacao) || 0;
                   const status = pontuacao >= 50 ? 'urgente' : pontuacao >= 30 ? 'atencao' : 'normal';
-                  const statusConfig = {
-                    urgente: { emoji: '🔴', text: 'Urgente', bg: 'bg-red-50', textColor: 'text-red-800', borderColor: 'border-l-red-500' },
-                    atencao: { emoji: '🟡', text: 'Atenção', bg: 'bg-yellow-50', textColor: 'text-yellow-800', borderColor: 'border-l-yellow-500' },
-                    normal: { emoji: '🟢', text: 'Normal', bg: 'bg-green-50', textColor: 'text-green-800', borderColor: 'border-l-green-500' }
-                  };
                   
                   return (
-                    <tr 
-                      key={item.id || index} 
-                      className={`hover:${statusConfig[status].bg} transition-all duration-200 border-l-4 ${statusConfig[status].borderColor}`}
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        <div>
-                          <div className="font-medium">
-                            {new Date(item.created_at).toLocaleDateString('pt-BR')}
-                          </div>
-                          <div className="text-gray-500 text-xs">
-                            {new Date(item.created_at).toLocaleTimeString('pt-BR')}
-                          </div>
+                    <tr key={item.id || index}>
+                      <td>
+                        <div style={{ fontSize: '14px', fontWeight: 'bold' }}>
+                          {new Date(item.created_at).toLocaleDateString('pt-BR')}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                          {new Date(item.created_at).toLocaleTimeString('pt-BR')}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <div className="font-medium text-gray-900">{item.nome_aluno || 'N/A'}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {item.terapeuta || 'N/A'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <div className="flex items-center">
-                          <span className={`text-lg font-bold ${statusConfig[status].textColor}`}>
-                            {pontuacao.toFixed(1)}
-                          </span>
-                          <div className="ml-2 w-16 bg-gray-200 rounded-full h-2">
-                            <div 
-                              className={`h-2 rounded-full ${
-                                status === 'urgente' ? 'bg-red-500' :
-                                status === 'atencao' ? 'bg-yellow-500' : 'bg-green-500'
-                              }`}
-                              style={{ width: `${Math.min(pontuacao, 100)}%` }}
-                            ></div>
-                          </div>
+                      <td style={{ fontWeight: 'bold' }}>{item.nome_aluno || 'N/A'}</td>
+                      <td>{item.terapeuta || 'N/A'}</td>
+                      <td>
+                        <div className={`status-${status}`}>
+                          {pontuacao.toFixed(1)}
+                        </div>
+                        <div className="progress-bar" style={{ width: '60px', height: '4px' }}>
+                          <div 
+                            className={`progress-fill progress-${status}`}
+                            style={{ width: `${Math.min(pontuacao, 100)}%` }}
+                          ></div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${statusConfig[status].bg} ${statusConfig[status].textColor} border`}>
-                          {statusConfig[status].emoji} {statusConfig[status].text}
+                      <td>
+                        <span className={`status-badge badge-${status}`}>
+                          {status === 'urgente' ? '🔴 Urgente' :
+                           status === 'atencao' ? '🟡 Atenção' : '🟢 Normal'}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-700 max-w-xs">
-                        <div className="truncate" title={item.observacoes}>
+                      <td style={{ maxWidth: '200px', fontSize: '12px' }}>
+                        <div style={{ 
+                          overflow: 'hidden', 
+                          textOverflow: 'ellipsis', 
+                          whiteSpace: 'nowrap' 
+                        }} title={item.observacoes}>
                           {item.observacoes || '-'}
                         </div>
                       </td>
@@ -816,26 +892,46 @@ export default function MedwayDashboard() {
           </div>
           
           {dadosFiltrados.length === 0 && (
-            <div className="text-center py-12">
-              <div className="text-4xl mb-4">🔍</div>
-              <div className="text-gray-500">Nenhum registro encontrado com os filtros aplicados.</div>
+            <div className="text-center" style={{ padding: '40px' }}>
+              <div style={{ fontSize: '48px', marginBottom: '10px' }}>🔍</div>
+              <div style={{ color: '#6b7280' }}>Nenhum registro encontrado com os filtros aplicados.</div>
             </div>
           )}
         </div>
 
-        {/* Rodapé Ultra */}
-        <div className="mt-16 text-center pb-8">
-          <div className="inline-flex items-center space-x-4 bg-white/90 backdrop-blur-lg rounded-2xl px-8 py-4 shadow-2xl border border-white/20">
-            <div className="w-12 h-12 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 rounded-xl flex items-center justify-center">
-              <span className="text-2xl">🧠</span>
+        {/* Rodapé */}
+        <div className="text-center" style={{ margin: '40px 0' }}>
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '15px',
+            background: 'rgba(255, 255, 255, 0.95)',
+            borderRadius: '16px',
+            padding: '20px',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.1)'
+          }}>
+            <div style={{
+              width: '48px',
+              height: '48px',
+              background: 'linear-gradient(45deg, #667eea, #764ba2)',
+              borderRadius: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '24px'
+            }}>
+              🧠
             </div>
-            <div className="text-left">
-              <p className="text-lg font-bold text-gray-800">MEDWAY Analytics v2.0</p>
-              <p className="text-sm text-gray-500">Sistema Inteligente de Monitoramento Psicológico</p>
+            <div style={{ textAlign: 'left' }}>
+              <div style={{ fontWeight: 'bold', fontSize: '18px' }}>MEDWAY Analytics v2.0</div>
+              <div style={{ color: '#6b7280', fontSize: '14px' }}>Sistema Inteligente de Monitoramento Psicológico</div>
             </div>
-            <div className="text-right text-xs text-gray-400">
-              <p>Última atualização: {lastUpdate.toLocaleString('pt-BR')}</p>
-              <p>{connectionStatus === 'connected' ? '🟢 Conectado' : connectionStatus === 'error' ? '🟡 Modo Demo' : '🔄 Conectando'}</p>
+            <div style={{ textAlign: 'right', fontSize: '12px', color: '#9ca3af' }}>
+              <div>Última atualização: {lastUpdate.toLocaleString('pt-BR')}</div>
+              <div>
+                {connectionStatus === 'connected' ? '🟢 Conectado' : 
+                 connectionStatus === 'error' ? '🟡 Modo Demo' : '🔄 Conectando'}
+              </div>
             </div>
           </div>
         </div>
