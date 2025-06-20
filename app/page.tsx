@@ -2,16 +2,35 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 
+interface Consulta {
+  id: number;
+  created_at: string;
+  nome_aluno: string;
+  terapeuta: string;
+  pontuacao: number;
+  observacoes: string;
+}
+
+interface Filters {
+  terapeuta: string;
+  periodo: string;
+  status: string;
+  pontuacaoMin: string;
+  pontuacaoMax: string;
+  aluno: string;
+  busca: string;
+}
+
 export default function MedwayDashboard() {
-  const [data, setData] = useState([]);
+  const [data, setData] = useState<Consulta[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [realTimeEnabled, setRealTimeEnabled] = useState(true);
   const [activeView, setActiveView] = useState('hoje');
   const [showFilters, setShowFilters] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState('connecting');
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = useState<Filters>({
     terapeuta: '',
     periodo: 'hoje',
     status: '',
@@ -48,13 +67,13 @@ export default function MedwayDashboard() {
       setLastUpdate(new Date());
       setConnectionStatus('connected');
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao buscar dados:', error);
       setError(error.message);
       setConnectionStatus('error');
       
       // Dados de exemplo mais realistas
-      const dadosExemplo = [
+      const dadosExemplo: Consulta[] = [
         {
           id: 1,
           created_at: new Date().toISOString(),
@@ -136,8 +155,8 @@ export default function MedwayDashboard() {
   }, [realTimeEnabled, fetchData]);
 
   // Função helper para obter valores únicos (compatível com TypeScript)
-  const getUniqueValues = (arr, key) => {
-    const uniqueSet = new Set(arr.map(item => item[key]).filter(Boolean));
+  const getUniqueValues = (arr: Consulta[], key: keyof Consulta): string[] => {
+    const uniqueSet = new Set(arr.map(item => String(item[key])).filter(Boolean));
     return Array.from(uniqueSet);
   };
 
@@ -147,7 +166,7 @@ export default function MedwayDashboard() {
   const ultimos7Dias = new Date(Date.now() - 7 * 86400000);
   const ultimos30Dias = new Date(Date.now() - 30 * 86400000);
 
-  const filtrarPorPeriodo = (dados, periodo) => {
+  const filtrarPorPeriodo = (dados: Consulta[], periodo: string): Consulta[] => {
     switch(periodo) {
       case 'hoje':
         return dados.filter(item => item.created_at?.startsWith(hoje));
@@ -162,7 +181,7 @@ export default function MedwayDashboard() {
     }
   };
 
-  const dadosFiltrados = data.filter(item => {
+  const dadosFiltrados = data.filter((item: Consulta) => {
     if (filters.periodo !== 'todos') {
       const dadosPeriodo = filtrarPorPeriodo([item], filters.periodo);
       if (dadosPeriodo.length === 0) return false;
@@ -447,7 +466,7 @@ export default function MedwayDashboard() {
                   className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all"
                 >
                   <option value="">Todos</option>
-                  {terapeutasUnicos.map(terapeuta => (
+                  {terapeutasUnicos.map((terapeuta: string) => (
                     <option key={terapeuta} value={terapeuta}>{terapeuta}</option>
                   ))}
                 </select>
