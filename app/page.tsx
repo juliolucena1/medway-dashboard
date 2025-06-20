@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 
 interface Consulta {
   id: number;
@@ -53,7 +53,6 @@ export default function MedwayDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPatient, setSelectedPatient] = useState<ConsultaNormalizada | null>(null);
   const [showInsights, setShowInsights] = useState(true);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   
   const [filters, setFilters] = useState<Filters>({
     terapeuta: '',
@@ -70,7 +69,7 @@ export default function MedwayDashboard() {
   const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR0dmFhZHdjZnpwZ2J0aGtqbHFhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA3MzIxMDAsImV4cCI6MjA0NjMwODEwMH0.JIENlyeyk0ibOq0Nb4ydFSFbsPprBFICfNHlvF8guwU';
 
   // Função para calcular tempo desde criação
-  const calcularTempoDecorrido = (dataString: string) => {
+  const calcularTempoDecorrido = (dataString: string): number => {
     const agora = new Date();
     const dataCriacao = new Date(dataString);
     const diferencaMs = agora.getTime() - dataCriacao.getTime();
@@ -122,7 +121,23 @@ export default function MedwayDashboard() {
     });
   };
 
-  // Insights IA automáticos
+  // Função helper para obter valores únicos - versão mais compatível
+  const getUniqueValues = (arr: ConsultaNormalizada[], key: keyof ConsultaNormalizada): string[] => {
+    const values: string[] = [];
+    const seen = new Set<string>();
+    
+    for (const item of arr) {
+      const value = String(item[key]);
+      if (value && !seen.has(value)) {
+        seen.add(value);
+        values.push(value);
+      }
+    }
+    
+    return values;
+  };
+
+  // Insights IA automáticos - versão mais compatível
   const gerarInsightsIA = useMemo((): InsightIA[] => {
     if (!data || data.length === 0) return [];
 
@@ -136,17 +151,25 @@ export default function MedwayDashboard() {
     // Insight sobre casos críticos
     const casosCriticos = dadosHoje.filter(item => item.urgencia_nivel === 'critica');
     if (casosCriticos.length > 0) {
+      const somaPotuacao = casosCriticos.reduce((acc, item) => acc + item.pontuacao, 0);
+      const mediaPontuacao = somaPotuacao / casosCriticos.length;
+      
       insights.push({
         tipo: 'alerta',
         titulo: `${casosCriticos.length} casos críticos requerem atenção imediata`,
-        descricao: `Pontuação média: ${(casosCriticos.reduce((acc, item) => acc + item.pontuacao, 0) / casosCriticos.length).toFixed(1)}`,
+        descricao: `Pontuação média: ${mediaPontuacao.toFixed(1)}`,
         icone: '🚨',
         acao: 'Revisar casos'
       });
     }
 
-    // Insight sobre produtividade
-    const terapeutasAtivos = Array.from(new Set(dadosHoje.map(item => item.terapeuta)));
+    // Insight sobre produtividade - versão mais compatível
+    const terapeutasMap = new Map<string, boolean>();
+    dadosHoje.forEach(item => {
+      terapeutasMap.set(item.terapeuta, true);
+    });
+    const terapeutasAtivos = Array.from(terapeutasMap.keys());
+    
     if (terapeutasAtivos.length > 0) {
       const mediaPorTerapeuta = dadosHoje.length / terapeutasAtivos.length;
       insights.push({
@@ -158,18 +181,26 @@ export default function MedwayDashboard() {
     }
 
     // Insight sobre horário de pico
-    const horariosPico = dadosHoje.reduce((acc, item) => {
+    const horariosPico: Record<number, number> = {};
+    dadosHoje.forEach(item => {
       const hora = new Date(item.created_at).getHours();
-      acc[hora] = (acc[hora] || 0) + 1;
-      return acc;
-    }, {} as Record<number, number>);
+      horariosPico[hora] = (horariosPico[hora] || 0) + 1;
+    });
 
-    const horaMaisPico = Object.entries(horariosPico).sort(([,a], [,b]) => b - a)[0];
-    if (horaMaisPico) {
+    const horasComConsultas = Object.keys(horariosPico).map(h => ({
+      hora: parseInt(h),
+      count: horariosPico[parseInt(h)]
+    }));
+    
+    if (horasComConsultas.length > 0) {
+      const horaMaisPico = horasComConsultas.reduce((max, current) => 
+        current.count > max.count ? current : max
+      );
+      
       insights.push({
         tipo: 'info',
-        titulo: `Horário de pico: ${horaMaisPico[0]}h`,
-        descricao: `${horaMaisPico[1]} consultas registradas`,
+        titulo: `Horário de pico: ${horaMaisPico.hora}h`,
+        descricao: `${horaMaisPico.count} consultas registradas`,
         icone: '📊'
       });
     }
@@ -177,10 +208,11 @@ export default function MedwayDashboard() {
     // Insight positivo
     const casosNormais = dadosHoje.filter(item => item.pontuacao < 30);
     if (casosNormais.length > dadosHoje.length * 0.7) {
+      const percentual = Math.round((casosNormais.length / dadosHoje.length) * 100);
       insights.push({
         tipo: 'sucesso',
         titulo: 'Dia com baixa criticidade!',
-        descricao: `${Math.round((casosNormais.length / dadosHoje.length) * 100)}% dos casos em níveis normais`,
+        descricao: `${percentual}% dos casos em níveis normais`,
         icone: '🎉'
       });
     }
@@ -190,7 +222,7 @@ export default function MedwayDashboard() {
 
   // Play alert sound para casos críticos
   const playAlertSound = useCallback(() => {
-    if (!soundEnabled) return;
+    if (!soundEnabled || typeof window === 'undefined') return;
     
     try {
       // Create a simple beep using Web Audio API
@@ -238,7 +270,7 @@ export default function MedwayDashboard() {
       // Check for new critical cases and play sound
       const novosCasosCriticos = dadosMapeados.filter(item => 
         item.urgencia_nivel === 'critica' && 
-        item.tempo_desde_criacao! < 5
+        (item.tempo_desde_criacao || 0) < 5
       );
       
       if (novosCasosCriticos.length > 0 && data.length > 0) {
@@ -291,7 +323,7 @@ export default function MedwayDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [SUPABASE_URL, SUPABASE_KEY, data, playAlertSound]);
+  }, [SUPABASE_URL, SUPABASE_KEY, data.length, playAlertSound]);
 
   // Countdown timer para próxima atualização
   useEffect(() => {
@@ -317,12 +349,6 @@ export default function MedwayDashboard() {
       return () => clearInterval(interval);
     }
   }, [realTimeEnabled, fetchData]);
-
-  // Função helper para obter valores únicos
-  const getUniqueValues = (arr: ConsultaNormalizada[], key: keyof ConsultaNormalizada): string[] => {
-    const uniqueSet = new Set(arr.map(item => String(item[key])).filter(Boolean));
-    return Array.from(uniqueSet);
-  };
 
   // Funções de análise
   const hoje = new Date().toISOString().split('T')[0];
@@ -429,7 +455,9 @@ export default function MedwayDashboard() {
     },
     email: (paciente: ConsultaNormalizada) => {
       const mailto = `mailto:contato@medway.com?subject=Follow-up: ${paciente.nome_aluno}&body=Referente ao caso de ${paciente.nome_aluno} (Pontuação: ${paciente.pontuacao})`;
-      window.open(mailto);
+      if (typeof window !== 'undefined') {
+        window.open(mailto);
+      }
     },
     agendar: (paciente: ConsultaNormalizada) => {
       alert(`Abrindo agenda para ${paciente.nome_aluno}...`);
@@ -509,7 +537,6 @@ export default function MedwayDashboard() {
         position: 'relative',
         overflow: 'hidden'
       }}>
-        {/* Skeleton Loading Premium */}
         <div style={{
           background: 'rgba(255, 255, 255, 0.05)',
           backdropFilter: 'blur(20px)',
@@ -522,9 +549,7 @@ export default function MedwayDashboard() {
             inset 0 1px 0 rgba(255, 255, 255, 0.1)
           `,
           maxWidth: '480px',
-          width: '90%',
-          position: 'relative',
-          animation: 'slideUp 0.8s ease-out'
+          width: '90%'
         }}>
           <div style={{
             width: '100px',
@@ -535,8 +560,7 @@ export default function MedwayDashboard() {
             alignItems: 'center',
             justifyContent: 'center',
             margin: '0 auto 32px',
-            fontSize: '48px',
-            animation: 'pulse 2s ease-in-out infinite'
+            fontSize: '48px'
           }}>
             🧠
           </div>
@@ -547,24 +571,16 @@ export default function MedwayDashboard() {
             fontSize: '32px',
             fontWeight: '700'
           }}>
-            MEDWAY Analytics v3.0
+            MEDWAY Analytics
           </h2>
           
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '12px',
-            marginBottom: '32px'
+          <p style={{ 
+            color: 'rgba(248, 250, 252, 0.7)', 
+            marginBottom: '32px',
+            fontSize: '18px'
           }}>
-            {[1, 2, 3].map(i => (
-              <div key={i} style={{
-                height: '8px',
-                background: 'rgba(99, 102, 241, 0.2)',
-                borderRadius: '4px',
-                animation: `shimmer 2s ease-in-out ${i * 0.2}s infinite`
-              }}></div>
-            ))}
-          </div>
+            Carregando sistema de monitoramento...
+          </p>
           
           <div style={{
             padding: '16px 24px',
@@ -577,22 +593,6 @@ export default function MedwayDashboard() {
             🔗 Conectando ao Supabase...
           </div>
         </div>
-        
-        <style>{`
-          @keyframes slideUp {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-          @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-          }
-          @keyframes shimmer {
-            0% { opacity: 0.3; transform: translateX(-100%); }
-            50% { opacity: 0.7; transform: translateX(0%); }
-            100% { opacity: 0.3; transform: translateX(100%); }
-          }
-        `}</style>
       </div>
     );
   }
@@ -606,8 +606,7 @@ export default function MedwayDashboard() {
         radial-gradient(circle at 75% 75%, rgba(168, 85, 247, 0.12) 0%, transparent 50%)
       `,
       fontFamily: `'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`,
-      position: 'relative',
-      minWidth: '320px'
+      position: 'relative'
     }}>
       <style>{`
         * { 
@@ -622,21 +621,14 @@ export default function MedwayDashboard() {
           border-radius: 24px;
           padding: 32px;
           border: 1px solid rgba(255, 255, 255, 0.1);
-          box-shadow: 
-            0 20px 40px -12px rgba(0, 0, 0, 0.25),
-            inset 0 1px 0 rgba(255, 255, 255, 0.1),
-            0 0 0 1px rgba(255, 255, 255, 0.05);
+          box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.25);
           margin-bottom: 24px;
-          transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-          position: relative;
-          overflow: hidden;
+          transition: all 0.4s ease;
         }
         
         .glass-card:hover {
           transform: translateY(-4px);
-          box-shadow: 
-            0 32px 64px -12px rgba(0, 0, 0, 0.35),
-            inset 0 1px 0 rgba(255, 255, 255, 0.15);
+          box-shadow: 0 32px 64px -12px rgba(0, 0, 0, 0.35);
         }
         
         .metric-card {
@@ -646,20 +638,14 @@ export default function MedwayDashboard() {
           padding: 28px;
           text-align: center;
           border: 1px solid rgba(255, 255, 255, 0.08);
-          box-shadow: 
-            0 8px 32px rgba(0, 0, 0, 0.18),
-            inset 0 1px 0 rgba(255, 255, 255, 0.08);
-          transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+          transition: all 0.4s ease;
           margin-bottom: 24px;
-          position: relative;
-          overflow: hidden;
         }
         
         .metric-card:hover {
           transform: translateY(-2px) scale(1.02);
-          box-shadow: 
-            0 16px 48px rgba(0, 0, 0, 0.25),
-            inset 0 1px 0 rgba(255, 255, 255, 0.12);
+          box-shadow: 0 16px 48px rgba(0, 0, 0, 0.25);
         }
         
         .btn {
@@ -669,11 +655,8 @@ export default function MedwayDashboard() {
           cursor: pointer;
           font-weight: 600;
           font-size: 14px;
-          transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+          transition: all 0.3s ease;
           margin: 6px;
-          position: relative;
-          overflow: hidden;
-          backdrop-filter: blur(8px);
           font-family: inherit;
           letter-spacing: 0.025em;
         }
@@ -753,50 +736,7 @@ export default function MedwayDashboard() {
         .status-critico { 
           color: #ef4444; 
           font-weight: 700;
-          text-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
-          animation: criticalPulse 2s ease-in-out infinite;
-        }
-        
-        .tooltip {
-          position: relative;
-          cursor: help;
-        }
-        
-        .tooltip:hover::after {
-          content: attr(data-tooltip);
-          position: absolute;
-          bottom: 100%;
-          left: 50%;
-          transform: translateX(-50%);
-          background: rgba(0, 0, 0, 0.9);
-          color: white;
-          padding: 8px 12px;
-          border-radius: 8px;
-          font-size: 12px;
-          white-space: nowrap;
-          z-index: 1000;
-          animation: fadeIn 0.3s ease;
-        }
-        
-        @keyframes criticalPulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.6; }
-        }
-        
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateX(-50%) translateY(5px); }
-          to { opacity: 1; transform: translateX(-50%) translateY(0); }
-        }
-        
-        @keyframes slideDown {
-          from { opacity: 0; transform: translateY(-20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        
-        @keyframes bounce {
-          0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
-          40% { transform: translateY(-10px); }
-          60% { transform: translateY(-5px); }
+          animation: pulse 2s ease-in-out infinite;
         }
         
         .insight-card {
@@ -830,6 +770,11 @@ export default function MedwayDashboard() {
           flex-wrap: wrap;
         }
         
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+        
         @media (max-width: 768px) {
           .glass-card { padding: 20px; }
           .metric-card { padding: 20px; }
@@ -838,7 +783,7 @@ export default function MedwayDashboard() {
         }
       `}</style>
 
-      {/* Header Ultra Premium com Timeline */}
+      {/* Header Premium */}
       <div style={{
         background: 'rgba(255, 255, 255, 0.08)',
         backdropFilter: 'blur(24px)',
@@ -874,7 +819,7 @@ export default function MedwayDashboard() {
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent'
                 }}>
-                  MEDWAY Analytics v3.0
+                  MEDWAY Analytics
                 </h1>
                 <div style={{ 
                   fontSize: '14px', 
@@ -890,11 +835,10 @@ export default function MedwayDashboard() {
                       height: '8px',
                       borderRadius: '50%',
                       background: connectionStatus === 'connected' ? '#34d399' : '#f87171',
-                      boxShadow: `0 0 8px ${connectionStatus === 'connected' ? 'rgba(52, 211, 153, 0.5)' : 'rgba(248, 113, 113, 0.5)'}`,
                       animation: connectionStatus === 'connected' ? 'pulse 2s infinite' : 'none'
                     }}></div>
                     <span style={{ color: connectionStatus === 'connected' ? '#34d399' : '#f87171' }}>
-                      {connectionStatus === 'connected' ? 'Conectado' : 'Erro de conexão'}
+                      {connectionStatus === 'connected' ? 'Conectado' : 'Modo Demo'}
                     </span>
                   </div>
                   <span>•</span>
@@ -905,7 +849,7 @@ export default function MedwayDashboard() {
                     <>
                       <span>•</span>
                       <span style={{ color: '#6366f1' }}>
-                        Próxima atualização: {nextUpdateIn}s
+                        Próxima: {nextUpdateIn}s
                       </span>
                     </>
                   )}
@@ -943,26 +887,21 @@ export default function MedwayDashboard() {
                 ))}
               </div>
 
-              {/* Sound Toggle */}
+              {/* Controls */}
               <button
                 onClick={() => setSoundEnabled(!soundEnabled)}
                 className={`btn ${soundEnabled ? 'btn-success' : 'btn-secondary'}`}
-                data-tooltip="Alertas sonoros para casos críticos"
                 style={{ padding: '12px' }}
+                title="Alertas sonoros"
               >
                 {soundEnabled ? '🔊' : '🔇'}
               </button>
 
-              {/* Real-time Toggle */}
               <button
                 onClick={() => setRealTimeEnabled(!realTimeEnabled)}
                 className={`btn ${realTimeEnabled ? 'btn-success' : 'btn-secondary'}`}
               >
-                <span style={{ 
-                  marginRight: '8px',
-                  animation: realTimeEnabled ? 'spin 2s linear infinite' : 'none'
-                }}>🔄</span>
-                {realTimeEnabled ? 'LIVE' : 'PAUSADO'}
+                🔄 {realTimeEnabled ? 'LIVE' : 'PAUSADO'}
               </button>
 
               <button
@@ -983,13 +922,13 @@ export default function MedwayDashboard() {
             </div>
           </div>
 
-          {/* Search Bar Global */}
+          {/* Search Bar */}
           <div style={{ marginTop: '20px', maxWidth: '600px' }}>
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="🔍 Busca instantânea: nome do aluno, terapeuta, observações..."
+              placeholder="🔍 Busca instantânea: nome, terapeuta, observações..."
               className="search-input"
             />
           </div>
@@ -999,7 +938,7 @@ export default function MedwayDashboard() {
       <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 24px' }}>
         {/* Insights IA */}
         {showInsights && gerarInsightsIA.length > 0 && (
-          <div className="glass-card" style={{ animation: 'slideDown 0.4s ease-out' }}>
+          <div className="glass-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h2 style={{ 
                 fontSize: '24px', 
@@ -1010,7 +949,7 @@ export default function MedwayDashboard() {
                 gap: '12px'
               }}>
                 <span style={{ fontSize: '28px' }}>🤖</span>
-                Insights IA em Tempo Real
+                Insights IA
               </h2>
               <button
                 onClick={() => setShowInsights(false)}
@@ -1054,7 +993,7 @@ export default function MedwayDashboard() {
           </div>
         )}
 
-        {/* Status de Sucesso Premium */}
+        {/* Status de Sucesso */}
         {connectionStatus === 'connected' && !error && (
           <div style={{
             padding: '24px',
@@ -1080,19 +1019,19 @@ export default function MedwayDashboard() {
               </div>
               <div>
                 <div style={{ fontSize: '20px', fontWeight: '700', marginBottom: '6px' }}>
-                  Sistema Conectado - Dados em Tempo Real!
+                  Sistema Online - Dados em Tempo Real!
                 </div>
                 <div style={{ fontSize: '14px', color: 'rgba(248, 250, 252, 0.8)' }}>
-                  {data.length} registros do Supabase • Atualização automática ativa • Alertas críticos habilitados
+                  {data.length} registros do Supabase • Atualização automática ativa
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* Painel de Filtros Avançados */}
+        {/* Painel de Filtros */}
         {showFilters && (
-          <div className="glass-card" style={{ animation: 'slideDown 0.4s ease-out' }}>
+          <div className="glass-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
               <h2 style={{ 
                 fontSize: '24px', 
@@ -1110,7 +1049,7 @@ export default function MedwayDashboard() {
                   💾 Exportar CSV
                 </button>
                 <button onClick={clearFilters} className="btn btn-secondary btn-sm">
-                  🗑️ Limpar Filtros
+                  🗑️ Limpar
                 </button>
               </div>
             </div>
@@ -1126,7 +1065,7 @@ export default function MedwayDashboard() {
                   className="search-input"
                   style={{ height: '48px' }}
                 >
-                  <option value="">Todos os terapeutas</option>
+                  <option value="">Todos</option>
                   {terapeutasUnicos.map((terapeuta: string) => (
                     <option key={terapeuta} value={terapeuta}>{terapeuta}</option>
                   ))}
@@ -1135,7 +1074,7 @@ export default function MedwayDashboard() {
               
               <div>
                 <label style={{ color: 'rgba(248, 250, 252, 0.7)', fontSize: '14px', marginBottom: '8px', display: 'block' }}>
-                  🚨 Status de Urgência
+                  🚨 Status
                 </label>
                 <select
                   value={filters.status}
@@ -1143,37 +1082,11 @@ export default function MedwayDashboard() {
                   className="search-input"
                   style={{ height: '48px' }}
                 >
-                  <option value="">Todos os status</option>
+                  <option value="">Todos</option>
                   <option value="normal">🟢 Normal (0-29)</option>
                   <option value="atencao">🟡 Atenção (30-49)</option>
                   <option value="urgente">🔴 Urgente (50+)</option>
                 </select>
-              </div>
-
-              <div>
-                <label style={{ color: 'rgba(248, 250, 252, 0.7)', fontSize: '14px', marginBottom: '8px', display: 'block' }}>
-                  📊 Pontuação Mínima
-                </label>
-                <input
-                  type="number"
-                  value={filters.pontuacaoMin}
-                  onChange={(e) => setFilters({...filters, pontuacaoMin: e.target.value})}
-                  placeholder="Ex: 30"
-                  className="search-input"
-                />
-              </div>
-
-              <div>
-                <label style={{ color: 'rgba(248, 250, 252, 0.7)', fontSize: '14px', marginBottom: '8px', display: 'block' }}>
-                  📊 Pontuação Máxima
-                </label>
-                <input
-                  type="number"
-                  value={filters.pontuacaoMax}
-                  onChange={(e) => setFilters({...filters, pontuacaoMax: e.target.value})}
-                  placeholder="Ex: 70"
-                  className="search-input"
-                />
               </div>
             </div>
 
@@ -1190,20 +1103,20 @@ export default function MedwayDashboard() {
               gap: '12px'
             }}>
               <div style={{ fontSize: '16px', color: 'rgba(248, 250, 252, 0.9)', fontWeight: '600' }}>
-                📋 <span style={{ color: '#6366f1' }}>{dadosFiltrados.length}</span> registros encontrados
+                📋 <span style={{ color: '#6366f1' }}>{dadosFiltrados.length}</span> registros
                 {searchTerm && ` para "${searchTerm}"`}
               </div>
               <div style={{ display: 'flex', gap: '20px', fontSize: '14px', flexWrap: 'wrap' }}>
-                <span style={{ color: '#34d399' }}>🟢 {metricas.casosNormaisHoje} Normais</span>
-                <span style={{ color: '#fbbf24' }}>🟡 {metricas.casosAtencaoHoje} Atenção</span>
-                <span style={{ color: '#f87171' }}>🔴 {metricas.casosUrgentesHoje} Urgentes</span>
-                <span style={{ color: '#ef4444' }}>⚠️ {metricas.casosCriticosHoje} Críticos</span>
+                <span style={{ color: '#34d399' }}>🟢 {metricas.casosNormaisHoje}</span>
+                <span style={{ color: '#fbbf24' }}>🟡 {metricas.casosAtencaoHoje}</span>
+                <span style={{ color: '#f87171' }}>🔴 {metricas.casosUrgentesHoje}</span>
+                <span style={{ color: '#ef4444' }}>⚠️ {metricas.casosCriticosHoje}</span>
               </div>
             </div>
           </div>
         )}
 
-        {/* Cards de Métricas Ultra Premium */}
+        {/* Cards de Métricas */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
           <div className="metric-card">
             <div style={{ color: 'rgba(248, 250, 252, 0.7)', fontSize: '14px', marginBottom: '8px' }}>
@@ -1232,6 +1145,22 @@ export default function MedwayDashboard() {
 
           <div className="metric-card">
             <div style={{ color: 'rgba(248, 250, 252, 0.7)', fontSize: '14px', marginBottom: '8px' }}>
+              Casos Críticos
+            </div>
+            <div style={{ 
+              fontSize: '48px', 
+              fontWeight: '800', 
+              margin: '16px 0'
+            }} className={metricas.casosCriticosHoje > 0 ? 'status-critico' : 'status-normal'}>
+              {metricas.casosCriticosHoje}
+            </div>
+            <div style={{ color: 'rgba(248, 250, 252, 0.6)', fontSize: '14px' }}>
+              Intervenção imediata
+            </div>
+          </div>
+
+          <div className="metric-card">
+            <div style={{ color: 'rgba(248, 250, 252, 0.7)', fontSize: '14px', marginBottom: '8px' }}>
               Terapeutas Ativos
             </div>
             <div style={{ 
@@ -1246,22 +1175,6 @@ export default function MedwayDashboard() {
             </div>
             <div style={{ color: 'rgba(248, 250, 252, 0.6)', fontSize: '14px' }}>
               de {terapeutasUnicos.length} total
-            </div>
-          </div>
-
-          <div className="metric-card">
-            <div style={{ color: 'rgba(248, 250, 252, 0.7)', fontSize: '14px', marginBottom: '8px' }}>
-              Casos Críticos
-            </div>
-            <div style={{ 
-              fontSize: '48px', 
-              fontWeight: '800', 
-              margin: '16px 0'
-            }} className={metricas.casosCriticosHoje > 0 ? 'status-critico' : 'status-normal'}>
-              {metricas.casosCriticosHoje}
-            </div>
-            <div style={{ color: 'rgba(248, 250, 252, 0.6)', fontSize: '14px' }}>
-              Pontuação ≥ 65 - Intervenção imediata
             </div>
           </div>
 
@@ -1289,7 +1202,7 @@ export default function MedwayDashboard() {
           </div>
         </div>
 
-        {/* Alertas de Emergência Ultra Premium */}
+        {/* Alerta Crítico */}
         {metricas.casosCriticosHoje > 0 && (
           <div style={{
             background: `linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(220, 38, 38, 0.15) 100%)`,
@@ -1298,10 +1211,7 @@ export default function MedwayDashboard() {
             color: 'rgba(248, 250, 252, 0.95)',
             padding: '32px',
             borderRadius: '24px',
-            marginBottom: '32px',
-            position: 'relative',
-            overflow: 'hidden',
-            animation: 'criticalPulse 2s ease-in-out infinite'
+            marginBottom: '32px'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
               <div style={{
@@ -1312,10 +1222,9 @@ export default function MedwayDashboard() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                border: '1px solid rgba(239, 68, 68, 0.3)',
-                animation: 'bounce 1s ease-in-out infinite'
+                fontSize: '48px'
               }}>
-                <span style={{ fontSize: '48px' }}>🚨</span>
+                🚨
               </div>
               <div style={{ flex: 1 }}>
                 <h3 style={{ 
@@ -1324,17 +1233,17 @@ export default function MedwayDashboard() {
                   marginBottom: '8px',
                   color: '#f87171'
                 }}>
-                  ALERTA CRÍTICO: {metricas.casosCriticosHoje} Casos Críticos
+                  ALERTA: {metricas.casosCriticosHoje} Casos Críticos
                 </h3>
                 <p style={{ fontSize: '16px', color: 'rgba(248, 250, 252, 0.8)', marginBottom: '16px' }}>
-                  Pontuação ≥ 65 - Intervenção médica imediata necessária
+                  Intervenção médica imediata necessária
                 </p>
                 <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                   <button className="btn btn-danger btn-sm">
-                    📞 Acionar Emergência
+                    📞 Emergência
                   </button>
                   <button className="btn btn-warning btn-sm">
-                    👨‍⚕️ Notificar Médico
+                    👨‍⚕️ Médico
                   </button>
                 </div>
               </div>
@@ -1342,7 +1251,7 @@ export default function MedwayDashboard() {
           </div>
         )}
 
-        {/* Tabela Ultra Premium com Ações Rápidas */}
+        {/* Tabela Premium */}
         <div className="glass-card">
           <div style={{
             padding: '24px',
@@ -1351,51 +1260,28 @@ export default function MedwayDashboard() {
             marginBottom: '0',
             border: '1px solid rgba(99, 102, 241, 0.2)'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-              <div>
-                <h3 style={{ 
-                  fontSize: '24px', 
-                  fontWeight: '700', 
-                  marginBottom: '8px',
-                  color: 'rgba(248, 250, 252, 0.95)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px'
-                }}>
-                  <span style={{ fontSize: '28px' }}>📋</span>
-                  Registros Detalhados ({dadosFiltrados.length})
-                </h3>
-                <p style={{ color: 'rgba(248, 250, 252, 0.8)', fontSize: '16px', margin: 0 }}>
-                  Monitoramento em tempo real • Ações rápidas integradas
-                </p>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '20px', fontSize: '13px', flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ width: '12px', height: '12px', background: '#34d399', borderRadius: '50%' }}></div>
-                  <span>Normal</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ width: '12px', height: '12px', background: '#fbbf24', borderRadius: '50%' }}></div>
-                  <span>Atenção</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ width: '12px', height: '12px', background: '#f87171', borderRadius: '50%' }}></div>
-                  <span>Urgente</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ width: '12px', height: '12px', background: '#ef4444', borderRadius: '50%', animation: 'pulse 1s infinite' }}></div>
-                  <span>Crítico</span>
-                </div>
-              </div>
-            </div>
+            <h3 style={{ 
+              fontSize: '24px', 
+              fontWeight: '700', 
+              marginBottom: '8px',
+              color: 'rgba(248, 250, 252, 0.95)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px'
+            }}>
+              <span style={{ fontSize: '28px' }}>📋</span>
+              Registros ({dadosFiltrados.length})
+            </h3>
+            <p style={{ color: 'rgba(248, 250, 252, 0.8)', fontSize: '16px', margin: 0 }}>
+              Monitoramento em tempo real
+            </p>
           </div>
           
           <div style={{ overflowX: 'auto' }}>
             <table style={{ 
               width: '100%',
               borderCollapse: 'collapse',
-              background: 'rgba(255, 255, 255, 0.04)',
-              borderRadius: '0 0 16px 16px'
+              background: 'rgba(255, 255, 255, 0.04)'
             }}>
               <thead>
                 <tr style={{ background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%)' }}>
@@ -1455,11 +1341,9 @@ export default function MedwayDashboard() {
                       }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.backgroundColor = config.bg;
-                        e.currentTarget.style.transform = 'scale(1.001)';
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.backgroundColor = 'transparent';
-                        e.currentTarget.style.transform = 'scale(1)';
                       }}
                     >
                       <td style={{ padding: '18px 16px', color: 'rgba(248, 250, 252, 0.9)' }}>
@@ -1474,32 +1358,13 @@ export default function MedwayDashboard() {
                         {item.terapeuta || 'N/A'}
                       </td>
                       <td style={{ padding: '18px 16px', textAlign: 'center' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ 
-                            fontSize: '18px', 
-                            fontWeight: '700', 
-                            color: config.textColor
-                          }}>
-                            {pontuacao.toFixed(1)}
-                          </span>
-                          <div style={{ 
-                            width: '60px', 
-                            height: '6px', 
-                            background: 'rgba(71, 85, 105, 0.3)', 
-                            borderRadius: '3px',
-                            overflow: 'hidden'
-                          }}>
-                            <div 
-                              style={{
-                                height: '100%',
-                                background: config.borderColor,
-                                width: `${Math.min(pontuacao, 100)}%`,
-                                borderRadius: '3px',
-                                transition: 'width 0.6s ease'
-                              }}
-                            ></div>
-                          </div>
-                        </div>
+                        <span style={{ 
+                          fontSize: '18px', 
+                          fontWeight: '700', 
+                          color: config.textColor
+                        }}>
+                          {pontuacao.toFixed(1)}
+                        </span>
                       </td>
                       <td style={{ padding: '18px 16px', textAlign: 'center' }}>
                         <span style={{
@@ -1530,28 +1395,28 @@ export default function MedwayDashboard() {
                           <button 
                             onClick={() => acoesRapidas.ligar(item)}
                             className="btn btn-primary btn-sm"
-                            data-tooltip="Ligar para o paciente"
+                            title="Ligar"
                           >
                             📞
                           </button>
                           <button 
                             onClick={() => acoesRapidas.email(item)}
                             className="btn btn-secondary btn-sm"
-                            data-tooltip="Enviar email"
+                            title="Email"
                           >
                             ✉️
                           </button>
                           <button 
                             onClick={() => acoesRapidas.agendar(item)}
                             className="btn btn-warning btn-sm"
-                            data-tooltip="Agendar consulta"
+                            title="Agendar"
                           >
                             📅
                           </button>
                           <button 
                             onClick={() => acoesRapidas.observacoes(item)}
                             className="btn btn-success btn-sm"
-                            data-tooltip="Ver observações"
+                            title="Observações"
                           >
                             📝
                           </button>
@@ -1571,7 +1436,7 @@ export default function MedwayDashboard() {
                         }} 
                         onClick={() => setSelectedPatient(item)}
                         title={item.observacoes}>
-                          {item.observacoes || 'Sem observações registradas'}
+                          {item.observacoes || 'Sem observações'}
                         </div>
                       </td>
                     </tr>
@@ -1597,9 +1462,6 @@ export default function MedwayDashboard() {
                 marginBottom: '8px'
               }}>
                 {searchTerm ? `Nenhum resultado para "${searchTerm}"` : 'Nenhum registro encontrado'}
-              </div>
-              <div style={{ color: 'rgba(248, 250, 252, 0.5)', fontSize: '14px' }}>
-                {searchTerm ? 'Tente uma busca diferente' : 'Ajuste os filtros para ver mais resultados'}
               </div>
             </div>
           )}
@@ -1630,7 +1492,7 @@ export default function MedwayDashboard() {
             }} onClick={e => e.stopPropagation()}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
                 <h3 style={{ fontSize: '24px', fontWeight: '700' }}>
-                  📝 Observações Detalhadas
+                  📝 Observações
                 </h3>
                 <button 
                   onClick={() => setSelectedPatient(null)}
@@ -1657,7 +1519,7 @@ export default function MedwayDashboard() {
                 lineHeight: 1.6,
                 marginBottom: '24px'
               }}>
-                {selectedPatient.observacoes || 'Sem observações registradas para este paciente.'}
+                {selectedPatient.observacoes || 'Sem observações registradas.'}
               </div>
               
               <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
@@ -1665,20 +1527,20 @@ export default function MedwayDashboard() {
                   onClick={() => acoesRapidas.email(selectedPatient)}
                   className="btn btn-primary"
                 >
-                  ✉️ Enviar Email
+                  ✉️ Email
                 </button>
                 <button 
                   onClick={() => acoesRapidas.agendar(selectedPatient)}
                   className="btn btn-success"
                 >
-                  📅 Agendar Follow-up
+                  📅 Agendar
                 </button>
               </div>
             </div>
           </div>
         )}
 
-        {/* Rodapé Ultra Premium */}
+        {/* Rodapé */}
         <div style={{ 
           textAlign: 'center', 
           margin: '80px 0 60px'
@@ -1719,13 +1581,13 @@ export default function MedwayDashboard() {
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent'
               }}>
-                MEDWAY Analytics v3.0
+                MEDWAY Analytics
               </div>
               <div style={{ 
                 color: 'rgba(248, 250, 252, 0.7)', 
                 fontSize: '16px'
               }}>
-                Sistema Inteligente de Monitoramento Psicológico
+                Sistema de Monitoramento Psicológico
               </div>
             </div>
             
@@ -1735,7 +1597,7 @@ export default function MedwayDashboard() {
               color: 'rgba(248, 250, 252, 0.6)'
             }}>
               <div style={{ marginBottom: '6px' }}>
-                🔄 Última atualização: {lastUpdate.toLocaleString('pt-BR')}
+                Última atualização: {lastUpdate.toLocaleString('pt-BR')}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <div style={{
@@ -1746,24 +1608,13 @@ export default function MedwayDashboard() {
                   animation: connectionStatus === 'connected' ? 'pulse 2s infinite' : 'none'
                 }}></div>
                 <span style={{ color: connectionStatus === 'connected' ? '#34d399' : '#f87171' }}>
-                  {connectionStatus === 'connected' ? 'Sistema Online' : 'Modo Demo'}
+                  {connectionStatus === 'connected' ? 'Online' : 'Demo'}
                 </span>
               </div>
             </div>
           </div>
         </div>
       </div>
-      
-      <style>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.5; }
-        }
-      `}</style>
     </div>
   );
 }
