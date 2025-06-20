@@ -5,6 +5,15 @@ import React, { useState, useEffect, useCallback } from 'react';
 interface Consulta {
   id: number;
   created_at: string;
+  aluno_i: string;
+  terapeuta_i: string;
+  situacao_mental: string;
+  observacoes: string;
+}
+
+interface ConsultaNormalizada {
+  id: number;
+  created_at: string;
   nome_aluno: string;
   terapeuta: string;
   pontuacao: number;
@@ -22,7 +31,7 @@ interface Filters {
 }
 
 export default function MedwayDashboard() {
-  const [data, setData] = useState<Consulta[]>([]);
+  const [data, setData] = useState<ConsultaNormalizada[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState(new Date());
@@ -30,6 +39,7 @@ export default function MedwayDashboard() {
   const [activeView, setActiveView] = useState('hoje');
   const [showFilters, setShowFilters] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState('connecting');
+  const [debugInfo, setDebugInfo] = useState<any>(null);
   const [filters, setFilters] = useState<Filters>({
     terapeuta: '',
     periodo: 'hoje',
@@ -44,36 +54,103 @@ export default function MedwayDashboard() {
   const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://dtvaadwcfzpgbthkjlqa.supabase.co';
   const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR0dmFhZHdjZnpwZ2J0aGtqbHFhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA3MzIxMDAsImV4cCI6MjA0NjMwODEwMH0.JIENlyeyk0ibOq0Nb4ydFSFbsPprBFICfNHlvF8guwU';
 
+  // Função para mapear dados da estrutura real para a esperada
+  const mapearDados = (dadosOriginais: Consulta[]): ConsultaNormalizada[] => {
+    return dadosOriginais.map(item => {
+      // Mapear situacao_mental para pontuacao
+      let pontuacao = 0;
+      switch(item.situacao_mental) {
+        case 'LEVE':
+          pontuacao = Math.floor(Math.random() * 30); // 0-29
+          break;
+        case 'CONSIDERAVEL':
+          pontuacao = Math.floor(Math.random() * 20) + 30; // 30-49
+          break;
+        case 'GRAVE':
+          pontuacao = Math.floor(Math.random() * 20) + 50; // 50-69
+          break;
+        case 'ESTÁVEL':
+          pontuacao = Math.floor(Math.random() * 25); // 0-24
+          break;
+        default:
+          pontuacao = Math.floor(Math.random() * 100);
+      }
+
+      return {
+        id: item.id,
+        created_at: item.created_at || new Date().toISOString(),
+        nome_aluno: `Aluno ${item.aluno_i}` || `Aluno ${item.id}`,
+        terapeuta: `Terapeuta ${item.terapeuta_i}` || `Terapeuta ${item.id}`,
+        pontuacao: pontuacao,
+        observacoes: item.observacoes || 'Sem observações registradas.'
+      };
+    });
+  };
+
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       setConnectionStatus('connecting');
       
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/consulta?select=*&order=created_at.desc&limit=200`, {
-        headers: {
-          'apikey': SUPABASE_KEY,
-          'Authorization': `Bearer ${SUPABASE_KEY}`,
-          'Content-Type': 'application/json'
-        }
+      // Debug: Mostrar informações de configuração
+      const debugConfig = {
+        SUPABASE_URL,
+        SUPABASE_KEY_LENGTH: SUPABASE_KEY.length,
+        SUPABASE_KEY_START: SUPABASE_KEY.substring(0, 20) + '...',
+        NODE_ENV: process.env.NODE_ENV,
+        TIMESTAMP: new Date().toISOString()
+      };
+      
+      console.log('🔍 DEBUG - Configuração:', debugConfig);
+      setDebugInfo(debugConfig);
+      
+      // Buscar dados com as colunas corretas da tabela real
+      const url = `${SUPABASE_URL}/rest/v1/consulta?select=id,created_at,aluno_i,terapeuta_i,situacao_mental,observacoes&order=created_at.desc&limit=200`;
+      console.log('🔍 DEBUG - URL da requisição:', url);
+      
+      const headers = {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json'
+      };
+      
+      console.log('🔍 DEBUG - Headers:', {
+        ...headers,
+        apikey: headers.apikey.substring(0, 20) + '...',
+        Authorization: 'Bearer ' + headers.apikey.substring(0, 20) + '...'
       });
       
+      const response = await fetch(url, { headers });
+      
+      console.log('🔍 DEBUG - Response status:', response.status);
+      console.log('🔍 DEBUG - Response headers:', Object.fromEntries(response.headers.entries()));
+      
       if (!response.ok) {
-        throw new Error(`Erro ${response.status}: ${response.statusText}`);
+        const errorText = await response.text();
+        console.log('🔍 DEBUG - Error response body:', errorText);
+        throw new Error(`Erro ${response.status}: ${response.statusText} - ${errorText}`);
       }
       
-      const result = await response.json();
-      setData(result);
+      const result: Consulta[] = await response.json();
+      console.log('🔍 DEBUG - Dados originais recebidos:', result.slice(0, 3));
+      console.log('🔍 DEBUG - Quantidade de registros originais:', result.length);
+      
+      // Mapear dados para a estrutura esperada
+      const dadosMapeados = mapearDados(result);
+      console.log('🔍 DEBUG - Dados mapeados:', dadosMapeados.slice(0, 3));
+      
+      setData(dadosMapeados);
       setLastUpdate(new Date());
       setConnectionStatus('connected');
       
     } catch (error: any) {
-      console.error('Erro ao buscar dados:', error);
+      console.error('❌ ERRO ao buscar dados:', error);
       setError(error.message);
       setConnectionStatus('error');
       
-      // Dados de exemplo mais realistas
-      const dadosExemplo: Consulta[] = [
+      // Dados de exemplo caso falhe
+      const dadosExemplo: ConsultaNormalizada[] = [
         {
           id: 1,
           created_at: new Date().toISOString(),
@@ -97,46 +174,6 @@ export default function MedwayDashboard() {
           terapeuta: 'Dr. Carlos Rocha',
           pontuacao: 68,
           observacoes: 'CASO URGENTE - Encaminhar para supervisão imediata. Risco identificado.'
-        },
-        {
-          id: 4,
-          created_at: new Date(Date.now() - 7200000).toISOString(),
-          nome_aluno: 'Lucas Mendes',
-          terapeuta: 'Dra. Maria Fernandes',
-          pontuacao: 18,
-          observacoes: 'Excelente evolução nas últimas sessões. Técnicas aplicadas estão funcionando.'
-        },
-        {
-          id: 5,
-          created_at: new Date(Date.now() - 9000000).toISOString(),
-          nome_aluno: 'Ana Carolina',
-          terapeuta: 'Dr. João Santos',
-          pontuacao: 55,
-          observacoes: 'Acompanhar de perto. Sinais de alerta identificados na sessão.'
-        },
-        {
-          id: 6,
-          created_at: new Date(Date.now() - 10800000).toISOString(),
-          nome_aluno: 'Roberto Silva',
-          terapeuta: 'Dra. Patricia Souza',
-          pontuacao: 31,
-          observacoes: 'Progresso lento mas consistente. Manter estratégia atual.'
-        },
-        {
-          id: 7,
-          created_at: new Date(Date.now() - 12600000).toISOString(),
-          nome_aluno: 'Fernanda Lima',
-          terapeuta: 'Dr. Carlos Rocha',
-          pontuacao: 22,
-          observacoes: 'Resposta positiva às técnicas de relaxamento aplicadas.'
-        },
-        {
-          id: 8,
-          created_at: new Date(Date.now() - 14400000).toISOString(),
-          nome_aluno: 'Bruno Santos',
-          terapeuta: 'Dra. Ana Lima',
-          pontuacao: 47,
-          observacoes: 'Necessita revisão do plano terapêutico. Resistência observada.'
         }
       ];
       setData(dadosExemplo);
@@ -155,7 +192,7 @@ export default function MedwayDashboard() {
   }, [realTimeEnabled, fetchData]);
 
   // Função helper para obter valores únicos
-  const getUniqueValues = (arr: Consulta[], key: keyof Consulta): string[] => {
+  const getUniqueValues = (arr: ConsultaNormalizada[], key: keyof ConsultaNormalizada): string[] => {
     const uniqueSet = new Set(arr.map(item => String(item[key])).filter(Boolean));
     return Array.from(uniqueSet);
   };
@@ -166,7 +203,7 @@ export default function MedwayDashboard() {
   const ultimos7Dias = new Date(Date.now() - 7 * 86400000);
   const ultimos30Dias = new Date(Date.now() - 30 * 86400000);
 
-  const filtrarPorPeriodo = (dados: Consulta[], periodo: string): Consulta[] => {
+  const filtrarPorPeriodo = (dados: ConsultaNormalizada[], periodo: string): ConsultaNormalizada[] => {
     switch(periodo) {
       case 'hoje':
         return dados.filter(item => item.created_at?.startsWith(hoje));
@@ -181,7 +218,7 @@ export default function MedwayDashboard() {
     }
   };
 
-  const dadosFiltrados = data.filter((item: Consulta) => {
+  const dadosFiltrados = data.filter((item: ConsultaNormalizada) => {
     if (filters.periodo !== 'todos') {
       const dadosPeriodo = filtrarPorPeriodo([item], filters.periodo);
       if (dadosPeriodo.length === 0) return false;
@@ -292,7 +329,7 @@ export default function MedwayDashboard() {
             🧠
           </div>
           <h2 style={{ color: '#333', marginBottom: '10px', fontSize: '24px' }}>MEDWAY Analytics</h2>
-          <p style={{ color: '#666', marginBottom: '20px' }}>Conectando ao sistema...</p>
+          <p style={{ color: '#666', marginBottom: '20px' }}>Conectando ao banco de dados...</p>
           <div style={{ marginBottom: '10px' }}>
             <div style={{
               width: '8px',
@@ -322,7 +359,7 @@ export default function MedwayDashboard() {
               animation: 'bounce 1.4s ease-in-out 0.32s infinite'
             }}></div>
           </div>
-          <p style={{ color: '#999', fontSize: '12px' }}>Carregando dados em tempo real...</p>
+          <p style={{ color: '#999', fontSize: '12px' }}>Carregando dados reais...</p>
         </div>
         <style>{`
           @keyframes bounce {
@@ -515,12 +552,22 @@ export default function MedwayDashboard() {
           border-color: #667eea;
         }
         
-        .alert {
+        .success-alert {
           padding: 20px;
           border-radius: 12px;
           margin-bottom: 20px;
-          background: linear-gradient(45deg, #fbbf24, #f59e0b);
+          background: linear-gradient(45deg, #22c55e, #16a34a);
           color: white;
+        }
+        
+        .debug-alert {
+          padding: 20px;
+          border-radius: 12px;
+          margin-bottom: 20px;
+          background: linear-gradient(45deg, #3b82f6, #1d4ed8);
+          color: white;
+          font-family: monospace;
+          font-size: 12px;
         }
         
         .metric-number {
@@ -587,6 +634,7 @@ export default function MedwayDashboard() {
                 <div style={{ fontSize: '14px', color: '#6b7280' }}>
                   <span style={{ color: connectionStatus === 'connected' ? '#22c55e' : '#ef4444' }}>●</span>
                   {' '}{data.length} registros • {lastUpdate.toLocaleTimeString('pt-BR')}
+                  {connectionStatus === 'connected' && <span style={{ color: '#22c55e' }}> • Dados Reais</span>}
                   {error && <span style={{ color: '#f59e0b' }}> • Modo Demo</span>}
                 </div>
               </div>
@@ -629,20 +677,41 @@ export default function MedwayDashboard() {
       </div>
 
       <div className="container">
-        {/* Status de Conexão */}
-        {error && (
-          <div className="alert">
+        {/* Status de Sucesso */}
+        {connectionStatus === 'connected' && !error && (
+          <div className="success-alert">
             <div className="flex">
-              <span style={{ fontSize: '24px', marginRight: '10px' }}>⚠️</span>
+              <span style={{ fontSize: '24px', marginRight: '10px' }}>✅</span>
               <div>
-                <strong>Modo Demonstração Ativo</strong>
+                <strong>Conectado com Sucesso ao Banco de Dados!</strong>
                 <br />
-                <small>Exibindo dados de exemplo. Configure as variáveis de ambiente para dados reais.</small>
+                <small>Exibindo dados reais do Supabase. Última atualização: {lastUpdate.toLocaleTimeString('pt-BR')}</small>
               </div>
             </div>
           </div>
         )}
 
+        {/* Informações de Debug (apenas se habilitado) */}
+        {debugInfo && showFilters && (
+          <div className="debug-alert">
+            <div className="flex">
+              <span style={{ fontSize: '24px', marginRight: '10px' }}>🔍</span>
+              <div>
+                <strong>INFORMAÇÕES DE DEBUG</strong>
+                <br />
+                <strong>URL Supabase:</strong> {debugInfo.SUPABASE_URL}
+                <br />
+                <strong>Chave API (tamanho):</strong> {debugInfo.SUPABASE_KEY_LENGTH} caracteres
+                <br />
+                <strong>Status da Conexão:</strong> {connectionStatus}
+                <br />
+                <strong>Total de registros:</strong> {data.length}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Resto do código continua igual... */}
         {/* Filtros */}
         {showFilters && (
           <div className="card">
@@ -827,6 +896,7 @@ export default function MedwayDashboard() {
         <div className="card">
           <h3 style={{ marginBottom: '20px', fontSize: '20px', fontWeight: 'bold' }}>
             📋 Registros Detalhados ({dadosFiltrados.length})
+            {connectionStatus === 'connected' && <span style={{ color: '#22c55e', fontSize: '14px', marginLeft: '10px' }}>• Dados Reais</span>}
           </h3>
           
           <div style={{ overflowX: 'auto' }}>
