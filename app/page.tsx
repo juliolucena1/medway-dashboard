@@ -135,6 +135,12 @@ export default function MedwayDashboard() {
     }
   }, [realTimeEnabled, fetchData]);
 
+  // Função helper para obter valores únicos (compatível com TypeScript)
+  const getUniqueValues = (arr, key) => {
+    const uniqueSet = new Set(arr.map(item => item[key]).filter(Boolean));
+    return Array.from(uniqueSet);
+  };
+
   // Funções de análise
   const hoje = new Date().toISOString().split('T')[0];
   const ontem = new Date(Date.now() - 86400000).toISOString().split('T')[0];
@@ -180,12 +186,16 @@ export default function MedwayDashboard() {
   const dadosHoje = filtrarPorPeriodo(data, activeView);
   const dadosOntem = filtrarPorPeriodo(data, 'ontem');
 
-  // Métricas principais
+  // Métricas principais (CORRIGIDAS - sem spread operator em Set)
+  const terapeutasHojeUnicos = getUniqueValues(dadosHoje, 'terapeuta');
+  const alunosHojeUnicos = getUniqueValues(dadosHoje, 'nome_aluno');
+  const terapeutasUnicos = getUniqueValues(data, 'terapeuta');
+
   const metricas = {
     totalHoje: dadosHoje.length,
     totalOntem: dadosOntem.length,
-    terapeutasHoje: [...new Set(dadosHoje.map(item => item.terapeuta))].filter(Boolean).length,
-    alunosHoje: [...new Set(dadosHoje.map(item => item.nome_aluno))].filter(Boolean).length,
+    terapeutasHoje: terapeutasHojeUnicos.length,
+    alunosHoje: alunosHojeUnicos.length,
     mediaPontuacaoHoje: dadosHoje.length > 0 
       ? (dadosHoje.reduce((acc, item) => acc + (parseFloat(item.pontuacao) || 0), 0) / dadosHoje.length)
       : 0,
@@ -194,7 +204,6 @@ export default function MedwayDashboard() {
     casosNormaisHoje: dadosHoje.filter(item => parseFloat(item.pontuacao) < 30).length
   };
 
-  const terapeutasUnicos = [...new Set(data.map(item => item.terapeuta))].filter(Boolean);
   const crescimentoHoje = metricas.totalOntem > 0 
     ? ((metricas.totalHoje - metricas.totalOntem) / metricas.totalOntem * 100)
     : 0;
